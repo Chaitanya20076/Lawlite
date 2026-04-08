@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Login — Lawlite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --obsidian:#07060A;--obsidian-mid:#0E0C14;--obsidian-light:#16131F;
+  --gold:#C9A84C;--gold-bright:#F0C040;--gold-pale:#EDD98A;--gold-dim:#7A6024;
+  --gold-glow:rgba(201,168,76,.22);--gold-glow-strong:rgba(240,192,64,.38);
+  --cream:#F5EDD6;--cream-dim:#C8B88A;--cream-muted:#7A6E5A;
+  --card-bg:#0E0C14;--card-border:rgba(201,168,76,.18);
+  --success:#4ADE80;--danger:#F87171;
+  --font-display:'Cinzel',serif;--font-serif:'Cormorant Garamond',serif;--font-body:'DM Sans',sans-serif;
+  --tr:all 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--obsidian);color:var(--cream);font-family:var(--font-body);min-height:100vh;display:flex;flex-direction:column;cursor:none;overflow-x:hidden}
+@media(max-width:768px){body{cursor:auto}}
+::selection{background:var(--gold);color:var(--obsidian)}
+a{text-decoration:none}
+
+/* ── Cursor ── */
+#cursor{position:fixed;width:10px;height:10px;background:var(--gold-bright);border-radius:50%;pointer-events:none;z-index:99999;transform:translate(-50%,-50%);mix-blend-mode:screen}
+#cursor-ring{position:fixed;width:34px;height:34px;border:1px solid var(--gold);border-radius:50%;pointer-events:none;z-index:99998;transform:translate(-50%,-50%);opacity:.6}
+@media(max-width:768px){#cursor,#cursor-ring{display:none}}
+
+/* ── Background ── */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");pointer-events:none;z-index:1;opacity:.5}
+.grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(201,168,76,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(201,168,76,.025) 1px,transparent 1px);background-size:72px 72px;pointer-events:none;z-index:0}
+.bg-orb{position:fixed;border-radius:50%;pointer-events:none;z-index:0}
+.bg-orb-1{width:700px;height:700px;background:radial-gradient(circle,rgba(201,168,76,.055) 0%,transparent 65%);top:-250px;right:-200px;animation:orbFloat 14s ease-in-out infinite alternate}
+.bg-orb-2{width:550px;height:550px;background:radial-gradient(circle,rgba(120,80,10,.07) 0%,transparent 65%);bottom:-180px;left:-150px;animation:orbFloat 18s ease-in-out infinite alternate-reverse}
+@keyframes orbFloat{from{transform:translate(0,0)}to{transform:translate(24px,-24px)}}
+
+/* ── Floating particles ── */
+.float-particles{position:fixed;inset:0;pointer-events:none;z-index:0}
+.float-p{position:absolute;width:1.5px;height:1.5px;border-radius:50%;background:var(--gold-pale);opacity:0;animation:floatUp linear infinite}
+@keyframes floatUp{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:.7}90%{opacity:.3}100%{transform:translateY(-40px) translateX(var(--dx));opacity:0}}
+
+/* ── Navbar ── */
+.auth-nav{position:fixed;top:0;left:0;right:0;z-index:100;height:68px;padding:0 5%;display:flex;align-items:center;background:rgba(7,6,10,.85);backdrop-filter:blur(24px);border-bottom:1px solid rgba(201,168,76,.09)}
+.nav-brand{display:flex;align-items:center;gap:12px;cursor:none}
+.nav-brand-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--gold-bright),var(--gold));border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 14px var(--gold-glow);transition:var(--tr)}
+.nav-brand:hover .nav-brand-icon{box-shadow:0 0 26px var(--gold-glow-strong);transform:scale(1.07) rotate(-3deg)}
+.nav-brand-icon svg{width:19px;height:19px;fill:var(--obsidian)}
+.nav-brand-name{font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:.15em;color:var(--cream)}
+.nav-brand-name span{color:var(--gold-bright)}
+.nav-back{margin-left:auto;font-family:var(--font-display);font-size:.65rem;font-weight:600;letter-spacing:.1em;color:var(--cream-muted);display:flex;align-items:center;gap:8px;transition:var(--tr);cursor:none;text-transform:uppercase}
+.nav-back:hover{color:var(--gold)}
+.nav-back i{font-size:.75rem}
+
+/* ── Auth Page ── */
+.auth-page{flex:1;display:flex;align-items:center;justify-content:center;padding:110px 20px 50px;position:relative;z-index:2}
+.auth-split{display:flex;width:100%;max-width:900px;gap:0;border-radius:22px;overflow:hidden;box-shadow:0 28px 100px rgba(0,0,0,.7),0 0 60px rgba(201,168,76,.07);border:1px solid var(--card-border);animation:cardIn .5s ease}
+@keyframes cardIn{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+
+/* Left panel */
+.auth-panel-left{width:280px;flex-shrink:0;background:linear-gradient(160deg,rgba(14,12,20,1),rgba(22,19,31,1));padding:48px 36px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid rgba(201,168,76,.12);position:relative;overflow:hidden}
+.auth-panel-left::before{content:'';position:absolute;top:-80px;right:-80px;width:200px;height:200px;background:radial-gradient(circle,rgba(201,168,76,.1),transparent 70%);border-radius:50%;pointer-events:none}
+.auth-panel-left::after{content:'';position:absolute;bottom:-60px;left:-60px;width:160px;height:160px;background:radial-gradient(circle,rgba(201,168,76,.06),transparent 70%);border-radius:50%;pointer-events:none}
+.panel-seal{width:56px;height:56px;margin-bottom:28px;filter:drop-shadow(0 0 16px var(--gold));animation:sealGlow 3s ease-in-out infinite alternate}
+@keyframes sealGlow{from{filter:drop-shadow(0 0 8px var(--gold))}to{filter:drop-shadow(0 0 24px var(--gold-bright))}}
+.panel-seal svg{width:100%;height:100%}
+.panel-title{font-family:var(--font-display);font-size:1.3rem;font-weight:900;letter-spacing:.12em;color:var(--cream);margin-bottom:10px;line-height:1.2}
+.panel-title span{color:var(--gold-bright);display:block}
+.panel-sub{font-family:var(--font-serif);font-size:.95rem;line-height:1.8;color:var(--cream-muted);margin-bottom:32px;font-style:italic}
+.panel-perks{display:flex;flex-direction:column;gap:12px}
+.panel-perk{display:flex;align-items:center;gap:10px;font-family:var(--font-body);font-size:.78rem;color:var(--cream-muted)}
+.panel-perk-icon{width:26px;height:26px;border-radius:6px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.2);display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--gold);flex-shrink:0}
+@media(max-width:680px){.auth-panel-left{display:none}}
+
+/* Right panel / form */
+.auth-card{flex:1;background:var(--card-bg);padding:48px 44px;position:relative;overflow:hidden}
+.auth-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.auth-card-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.2);padding:5px 16px;border-radius:100px;font-family:var(--font-display);font-size:.58rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:22px}
+.auth-card-title{font-family:var(--font-display);font-size:1.6rem;font-weight:900;letter-spacing:.08em;color:var(--cream);margin-bottom:8px;line-height:1.2}
+.auth-card-title span{color:var(--gold-bright)}
+.auth-card-sub{font-family:var(--font-serif);font-size:.95rem;font-style:italic;color:var(--cream-muted);line-height:1.7;margin-bottom:32px}
+
+/* ── Form ── */
+.form-group{margin-bottom:18px}
+.form-label{display:block;font-family:var(--font-display);font-size:.6rem;font-weight:600;letter-spacing:.12em;color:var(--cream-dim);margin-bottom:9px;text-transform:uppercase}
+.form-input-wrap{position:relative;display:flex;align-items:center}
+.form-input-icon{position:absolute;left:14px;color:var(--cream-muted);font-size:.82rem;pointer-events:none;transition:var(--tr);z-index:1}
+.form-input{width:100%;background:rgba(201,168,76,.04);border:1px solid rgba(201,168,76,.18);border-radius:10px;padding:13px 14px 13px 40px;font-family:var(--font-body);font-size:.9rem;color:var(--cream);outline:none;transition:var(--tr)}
+.form-input::placeholder{color:var(--cream-muted)}
+.form-input:focus{border-color:rgba(201,168,76,.5);background:rgba(201,168,76,.07);box-shadow:0 0 0 3px rgba(201,168,76,.08)}
+.form-input-wrap:focus-within .form-input-icon{color:var(--gold)}
+.pw-toggle{position:absolute;right:14px;background:none;border:none;color:var(--cream-muted);cursor:none;font-size:.82rem;transition:var(--tr);padding:2px;z-index:1}
+.pw-toggle:hover{color:var(--gold)}
+
+/* ── Submit ── */
+.form-submit{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--font-display);font-size:.78rem;font-weight:700;letter-spacing:.1em;color:var(--obsidian);background:linear-gradient(135deg,var(--gold-bright),var(--gold));border:none;padding:15px;border-radius:10px;cursor:none;transition:var(--tr);box-shadow:0 6px 28px var(--gold-glow);margin-top:26px;position:relative;overflow:hidden}
+.form-submit::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);opacity:0;transition:var(--tr)}
+.form-submit:hover{transform:translateY(-2px);box-shadow:0 12px 40px var(--gold-glow-strong)}
+.form-submit:hover::after{opacity:1}
+.form-submit:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* ── Alerts ── */
+.form-error{display:none;align-items:center;gap:8px;background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.25);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.8rem;color:#FCA5A5}
+.form-error.show{display:flex}
+.form-success{display:none;align-items:center;gap:8px;background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.25);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.8rem;color:#86EFAC}
+.form-success.show{display:flex}
+
+/* ── Protected info ── */
+.protected-info{background:rgba(201,168,76,.05);border:1px solid rgba(201,168,76,.15);border-radius:10px;padding:12px 16px;margin-bottom:22px;display:flex;align-items:flex-start;gap:10px;font-size:.78rem;color:var(--cream-muted);line-height:1.6}
+.protected-info i{color:var(--gold);margin-top:2px;flex-shrink:0}
+
+/* ── Forgot password link ── */
+.forgot-link{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-display);font-size:.6rem;letter-spacing:.08em;color:var(--gold-dim);background:none;border:none;padding:0;cursor:none;transition:var(--tr);text-transform:uppercase;margin-top:6px;float:right}
+.forgot-link:hover{color:var(--gold)}
+
+/* ── Divider & switch ── */
+.auth-divider{display:flex;align-items:center;gap:14px;margin:22px 0;color:var(--cream-muted);font-size:.72rem;clear:both}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:rgba(201,168,76,.1)}
+.auth-switch{text-align:center;font-family:var(--font-serif);font-size:.9rem;font-style:italic;color:var(--cream-muted);margin-top:18px}
+.auth-switch a{color:var(--gold-bright);font-weight:600;cursor:none;transition:var(--tr);font-style:normal;font-family:var(--font-display);font-size:.75rem;letter-spacing:.06em}
+.auth-switch a:hover{text-decoration:underline}
+
+/* ── Ornament ── */
+.ornament-line{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.ornament-line::before,.ornament-line::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,.25))}
+.ornament-line::after{background:linear-gradient(90deg,rgba(201,168,76,.25),transparent)}
+.ornament-diamond{width:6px;height:6px;background:var(--gold);transform:rotate(45deg);flex-shrink:0}
+
+/* ── Forgot Password Panel ── */
+#forgotPanel{display:none;flex-direction:column}
+#forgotPanel.show{display:flex}
+.back-to-login{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-display);font-size:.62rem;font-weight:600;letter-spacing:.1em;color:var(--cream-muted);background:none;border:none;padding:0;cursor:none;transition:var(--tr);text-transform:uppercase;margin-bottom:22px}
+.back-to-login:hover{color:var(--gold)}
+.back-to-login i{font-size:.7rem}
+
+/* ── Reset success panel ── */
+#resetSuccessPanel{display:none;flex-direction:column;align-items:center;text-align:center}
+#resetSuccessPanel.show{display:flex}
+.reset-icon-wrap{width:80px;height:80px;background:rgba(74,222,128,.07);border:2px solid rgba(74,222,128,.28);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:20px;animation:verifyPop .5s cubic-bezier(0.175,0.885,0.32,1.275) forwards,successGlow 2s 0.5s ease-in-out infinite alternate}
+@keyframes verifyPop{from{transform:scale(0.4);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes successGlow{from{box-shadow:0 0 18px rgba(74,222,128,.18)}to{box-shadow:0 0 36px rgba(74,222,128,.4),0 0 70px rgba(74,222,128,.12)}}
+.reset-icon-wrap i{font-size:2rem;color:var(--success)}
+.reset-success-title{font-family:var(--font-display);font-size:1.2rem;font-weight:900;letter-spacing:.07em;color:var(--cream);margin-bottom:8px}
+.reset-success-title span{color:var(--success)}
+.reset-success-sub{font-family:var(--font-serif);font-size:.96rem;font-style:italic;line-height:1.8;color:var(--cream-muted);max-width:320px;margin-bottom:20px}
+.reset-email-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.2);padding:7px 16px;border-radius:100px;font-family:var(--font-body);font-size:.8rem;color:var(--success);margin-bottom:28px;word-break:break-all}
+.reset-note{background:rgba(201,168,76,.04);border:1px solid rgba(201,168,76,.1);border-radius:10px;padding:12px 16px;font-size:.78rem;color:var(--cream-muted);line-height:1.6;margin-bottom:24px;text-align:left;display:flex;align-items:flex-start;gap:8px;width:100%}
+.reset-note i{color:var(--gold);flex-shrink:0;margin-top:2px}
+.btn-back-login{display:inline-flex;align-items:center;justify-content:center;gap:10px;font-family:var(--font-display);font-size:.75rem;font-weight:700;letter-spacing:.1em;color:var(--obsidian);background:linear-gradient(135deg,var(--gold-bright),var(--gold));border:none;padding:13px 30px;border-radius:10px;cursor:none;transition:var(--tr);box-shadow:0 6px 28px var(--gold-glow);width:100%}
+.btn-back-login:hover{transform:translateY(-2px);box-shadow:0 12px 40px var(--gold-glow-strong)}
+</style>
+</head>
+<body>
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<div class="grid-bg"></div>
+<div class="bg-orb bg-orb-1"></div>
+<div class="bg-orb bg-orb-2"></div>
+<div class="float-particles" id="floatParticles"></div>
+
+<!-- Firebase compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="auth.js"></script>
+
+<nav class="auth-nav">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-brand-icon">
+      <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 1L3 5v5c0 4.5 3 8.5 7 10 4-1.5 7-5.5 7-10V5L10 1z"/></svg>
+    </div>
+    <span class="nav-brand-name">LAW<span>LITE</span></span>
+  </a>
+  <a href="index.html" class="nav-back"><i class="fas fa-arrow-left"></i> Back to Home</a>
+</nav>
+
+<div class="auth-page">
+  <div class="auth-split">
+    <!-- Left decorative panel -->
+    <div class="auth-panel-left">
+      <div class="panel-seal">
+        <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="40,4 74,22 74,58 40,76 6,58 6,22" fill="none" stroke="#C9A84C" stroke-width="1.5"/>
+          <polygon points="40,12 68,27 68,53 40,68 12,53 12,27" fill="none" stroke="#C9A84C" stroke-width=".7" opacity=".5"/>
+          <path d="M40 20L32 34H48L40 20Z" fill="#C9A84C" opacity=".9"/>
+          <rect x="36" y="34" width="8" height="16" fill="#C9A84C" opacity=".9"/>
+          <rect x="30" y="50" width="20" height="4" rx="1" fill="#C9A84C" opacity=".7"/>
+        </svg>
+      </div>
+      <div class="panel-title" id="panelTitle">Welcome<span>Back.</span></div>
+      <div class="panel-sub" id="panelSub">Your trusted AI counsel awaits. Log in to access your document analysis suite.</div>
+      <div class="panel-perks">
+        <div class="panel-perk"><div class="panel-perk-icon"><i class="fas fa-robot"></i></div> AI Legal Analysis</div>
+        <div class="panel-perk"><div class="panel-perk-icon"><i class="fas fa-comments"></i></div> Document Chat AI</div>
+        <div class="panel-perk"><div class="panel-perk-icon"><i class="fas fa-language"></i></div> English + Kannada</div>
+        <div class="panel-perk"><div class="panel-perk-icon"><i class="fas fa-shield-alt"></i></div> Zero Data Stored</div>
+      </div>
+    </div>
+
+    <!-- Right form panel -->
+    <div class="auth-card">
+
+      <!-- ── LOGIN FORM (default) ── -->
+      <div id="loginPanel">
+        <div class="auth-card-badge"><i class="fas fa-crown"></i> Secure Portal</div>
+        <div class="auth-card-title">Sign <span>In</span></div>
+        <div class="auth-card-sub">Access your AI legal intelligence dashboard.</div>
+
+        <div class="ornament-line"><div class="ornament-diamond"></div></div>
+
+        <div class="protected-info" id="protectedInfo" style="display:none">
+          <i class="fas fa-shield-alt"></i>
+          <span>The Analyzer is protected. Please log in to continue to your document analysis.</span>
+        </div>
+
+        <div class="form-error" id="loginError"><i class="fas fa-exclamation-circle"></i><span id="loginErrorText">Invalid credentials.</span></div>
+        <div class="form-success" id="loginSuccess"><i class="fas fa-check-circle"></i><span id="loginSuccessText">Logged in successfully!</span></div>
+
+        <div class="form-group">
+          <label class="form-label" for="emailInput">Email Address</label>
+          <div class="form-input-wrap">
+            <i class="fas fa-envelope form-input-icon"></i>
+            <input class="form-input" id="emailInput" type="email" placeholder="you@example.com" autocomplete="email"/>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="passwordInput">Password</label>
+          <div class="form-input-wrap">
+            <i class="fas fa-lock form-input-icon"></i>
+            <input class="form-input" id="passwordInput" type="password" placeholder="Enter your password" autocomplete="current-password"/>
+            <button class="pw-toggle" type="button" onclick="togglePw('passwordInput',this)"><i class="fas fa-eye"></i></button>
+          </div>
+          <button class="forgot-link" onclick="showForgotPanel()"><i class="fas fa-key"></i> Forgot Password?</button>
+        </div>
+
+        <button class="form-submit" id="loginBtn" onclick="handleLogin()">
+          <i class="fas fa-sign-in-alt"></i> Enter the Chamber
+        </button>
+
+        <div class="auth-divider">or</div>
+        <div class="auth-switch">No account yet? <a href="signup.html">Create One Free</a></div>
+      </div>
+
+      <!-- ── FORGOT PASSWORD PANEL ── -->
+      <div id="forgotPanel">
+        <button class="back-to-login" onclick="showLoginPanel()"><i class="fas fa-arrow-left"></i> Back to Login</button>
+
+        <div class="auth-card-badge"><i class="fas fa-key"></i> Password Reset</div>
+        <div class="auth-card-title">Reset Your <span>Password</span></div>
+        <div class="auth-card-sub">Enter your registered email and we'll send you a secure reset link.</div>
+
+        <div class="ornament-line"><div class="ornament-diamond"></div></div>
+
+        <div class="form-error" id="forgotError"><i class="fas fa-exclamation-circle"></i><span id="forgotErrorText">Something went wrong.</span></div>
+
+        <div class="form-group">
+          <label class="form-label" for="forgotEmailInput">Email Address</label>
+          <div class="form-input-wrap">
+            <i class="fas fa-envelope form-input-icon"></i>
+            <input class="form-input" id="forgotEmailInput" type="email" placeholder="you@example.com" autocomplete="email"/>
+          </div>
+        </div>
+
+        <button class="form-submit" id="forgotBtn" onclick="handleForgotPassword()">
+          <i class="fas fa-paper-plane"></i> Send Reset Link
+        </button>
+      </div>
+
+      <!-- ── RESET EMAIL SENT SUCCESS ── -->
+      <div id="resetSuccessPanel">
+        <div class="reset-icon-wrap"><i class="fas fa-envelope-circle-check"></i></div>
+        <div class="reset-success-title">Reset Link <span>Sent!</span></div>
+        <div class="reset-success-sub">A password reset link has been sent to:</div>
+        <div class="reset-email-badge"><i class="fas fa-envelope"></i><span id="resetEmailDisplay"></span></div>
+
+        <div class="reset-note">
+          <i class="fas fa-info-circle"></i>
+          <span>Click the link in that email to set a new password. Once reset, you can return here and log in with your new credentials.</span>
+        </div>
+
+        <button class="btn-back-login" onclick="showLoginPanel()">
+          <i class="fas fa-sign-in-alt"></i> Return to Login
+        </button>
+      </div>
+
+    </div><!-- /auth-card -->
+  </div><!-- /auth-split -->
+</div><!-- /auth-page -->
+
+<script>
+// ── Cursor ────────────────────────────────────────────────────────────────────
+const cursor=document.getElementById('cursor');
+const ring=document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',function(e){ mx=e.clientX;my=e.clientY;cursor.style.left=mx+'px';cursor.style.top=my+'px'; });
+(function anim(){ rx+=(mx-rx)*.12;ry+=(my-ry)*.12;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(anim); })();
+
+// ── Floating particles ────────────────────────────────────────────────────────
+(function(){
+  const wrap=document.getElementById('floatParticles');
+  for(let i=0;i<16;i++){
+    const p=document.createElement('div');p.className='float-p';
+    p.style.cssText=`left:${Math.random()*100}%;animation-duration:${8+Math.random()*10}s;animation-delay:${Math.random()*10}s;--dx:${(Math.random()-.5)*50}px`;
+    wrap.appendChild(p);
+  }
+})();
+
+const params=new URLSearchParams(window.location.search);
+
+// Redirect if already logged in
+// REPLACE with:
+// WITH:
+Auth.onAuthChange(function(user){
+  // Do nothing on page load — only redirect after explicit login click
+});
+
+// Show protected notice
+if(params.get('redirect')) document.getElementById('protectedInfo').style.display='flex';
+
+// ── Panel switchers ───────────────────────────────────────────────────────────
+function showLoginPanel(){
+  document.getElementById('loginPanel').style.display='block';
+  document.getElementById('forgotPanel').classList.remove('show');
+  document.getElementById('resetSuccessPanel').classList.remove('show');
+  document.getElementById('panelTitle').innerHTML='Welcome<span>Back.</span>';
+  document.getElementById('panelSub').textContent='Your trusted AI counsel awaits. Log in to access your document analysis suite.';
+}
+
+function showForgotPanel(){
+  document.getElementById('loginPanel').style.display='none';
+  document.getElementById('forgotPanel').classList.add('show');
+  document.getElementById('resetSuccessPanel').classList.remove('show');
+  document.getElementById('panelTitle').innerHTML='Forgot Your<span>Password?</span>';
+  document.getElementById('panelSub').textContent='No worries. We\'ll send a secure reset link straight to your inbox.';
+  // Pre-fill forgot email if login email has value
+  const loginEmail=document.getElementById('emailInput').value.trim();
+  if(loginEmail) document.getElementById('forgotEmailInput').value=loginEmail;
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function togglePw(id,btn){
+  const input=document.getElementById(id);
+  const isText=input.type==='text';
+  input.type=isText?'password':'text';
+  btn.querySelector('i').className=isText?'fas fa-eye':'fas fa-eye-slash';
+}
+
+function showLoginError(msg){
+  document.getElementById('loginErrorText').textContent=msg;
+  document.getElementById('loginError').classList.add('show');
+  document.getElementById('loginSuccess').classList.remove('show');
+}
+function showLoginSuccess(msg){
+  document.getElementById('loginSuccessText').textContent=msg;
+  document.getElementById('loginSuccess').classList.add('show');
+  document.getElementById('loginError').classList.remove('show');
+}
+function showForgotError(msg){
+  document.getElementById('forgotErrorText').textContent=msg;
+  document.getElementById('forgotError').classList.add('show');
+}
+
+// ── Login handler ─────────────────────────────────────────────────────────────
+function handleLogin(){
+  const email=document.getElementById('emailInput').value.trim();
+  const password=document.getElementById('passwordInput').value;
+  const btn=document.getElementById('loginBtn');
+
+  document.getElementById('loginError').classList.remove('show');
+
+  if(!email||!password){ showLoginError('Please enter both email and password.'); return; }
+
+  btn.disabled=true;
+  btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Authenticating...';
+
+  Auth.login(email,password).then(function(result){
+    if(result.success){
+      showLoginSuccess('Login successful! Entering the chamber…');
+      setTimeout(function(){ Auth.postAuthRedirect(params.get('redirect')); },800);
+    } else {
+      showLoginError(result.error);
+      btn.disabled=false;
+      btn.innerHTML='<i class="fas fa-sign-in-alt"></i> Enter the Chamber';
+    }
+  });
+}
+
+// ── Forgot password handler ───────────────────────────────────────────────────
+function handleForgotPassword(){
+  const email=document.getElementById('forgotEmailInput').value.trim();
+  const btn=document.getElementById('forgotBtn');
+
+  document.getElementById('forgotError').classList.remove('show');
+
+  if(!email){ showForgotError('Please enter your email address.'); return; }
+
+  btn.disabled=true;
+  btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Sending reset link...';
+
+  Auth.resetPassword(email).then(function(result){
+    if(result.success){
+      // Show success screen
+      document.getElementById('forgotPanel').classList.remove('show');
+      document.getElementById('resetEmailDisplay').textContent=email;
+      document.getElementById('resetSuccessPanel').classList.add('show');
+      document.getElementById('panelTitle').innerHTML='Check Your<span>Inbox.</span>';
+      document.getElementById('panelSub').textContent='Your password reset link is on its way. Check your email to continue.';
+    } else {
+      showForgotError(result.error);
+      btn.disabled=false;
+      btn.innerHTML='<i class="fas fa-paper-plane"></i> Send Reset Link';
+    }
+  });
+}
+
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Enter') return;
+  if(!document.getElementById('forgotPanel').classList.contains('show')){
+    handleLogin();
+  } else {
+    handleForgotPassword();
+  }
+});
+</script>
+</body>
+</html>

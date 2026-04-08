@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Welcome — Lawlite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --obsidian:#07060A;--obsidian-mid:#0E0C14;--obsidian-light:#16131F;
+  --gold:#C9A84C;--gold-bright:#F0C040;--gold-pale:#EDD98A;--gold-dim:#7A6024;
+  --gold-glow:rgba(201,168,76,.22);--gold-glow-strong:rgba(240,192,64,.38);
+  --cream:#F5EDD6;--cream-dim:#C8B88A;--cream-muted:#7A6E5A;
+  --card-bg:#0E0C14;--card-border:rgba(201,168,76,.18);
+  --success:#4ADE80;--danger:#F87171;
+  --font-display:'Cinzel',serif;--font-serif:'Cormorant Garamond',serif;--font-body:'DM Sans',sans-serif;
+  --tr:all 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;}
+.ob-wrap{overflow-y:auto;max-height:100vh;padding:20px 20px;}
+body{background:var(--obsidian);color:var(--cream);font-family:var(--font-body);cursor:none;display:flex;align-items:center;justify-content:center}
+@media(max-width:768px){body{cursor:auto}}
+::selection{background:var(--gold);color:var(--obsidian)}
+
+/* ── Cursor ── */
+#cursor{position:fixed;width:10px;height:10px;background:var(--gold-bright);border-radius:50%;pointer-events:none;z-index:99999;transform:translate(-50%,-50%);mix-blend-mode:screen}
+#cursor-ring{position:fixed;width:34px;height:34px;border:1px solid var(--gold);border-radius:50%;pointer-events:none;z-index:99998;transform:translate(-50%,-50%);opacity:.6}
+@media(max-width:768px){#cursor,#cursor-ring{display:none}}
+
+/* ── Background ── */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");pointer-events:none;z-index:1;opacity:.5}
+.grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(201,168,76,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(201,168,76,.025) 1px,transparent 1px);background-size:72px 72px;pointer-events:none;z-index:0}
+.bg-orb-1{position:fixed;width:700px;height:700px;background:radial-gradient(circle,rgba(201,168,76,.05) 0%,transparent 65%);top:-300px;right:-200px;border-radius:50%;pointer-events:none;z-index:0;animation:orbFloat 14s ease-in-out infinite alternate}
+.bg-orb-2{position:fixed;width:500px;height:500px;background:radial-gradient(circle,rgba(120,80,10,.06) 0%,transparent 65%);bottom:-200px;left:-150px;border-radius:50%;pointer-events:none;z-index:0;animation:orbFloat 18s ease-in-out infinite alternate-reverse}
+@keyframes orbFloat{from{transform:translate(0,0)}to{transform:translate(20px,-20px)}}
+
+/* ── Floating particles ── */
+.float-particles{position:fixed;inset:0;pointer-events:none;z-index:0}
+.float-p{position:absolute;width:1.5px;height:1.5px;border-radius:50%;background:var(--gold-pale);opacity:0;animation:floatUp linear infinite}
+@keyframes floatUp{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:.7}90%{opacity:.3}100%{transform:translateY(-40px) translateX(var(--dx));opacity:0}}
+
+/* ── Radial beam ── */
+.radial-beam{position:fixed;inset:0;background:radial-gradient(ellipse at center,rgba(201,168,76,.04) 0%,transparent 60%);pointer-events:none;z-index:0;animation:beamPulse 4s ease-in-out infinite alternate}
+@keyframes beamPulse{from{opacity:.5}to{opacity:1}}
+
+/* ── Container ── */
+.ob-wrap{position:relative;z-index:2;width:100%;max-width:640px;padding:0 20px}
+
+/* ── Step ── */
+.ob-step{display:none;flex-direction:column;align-items:center;text-align:center}
+.ob-step.active{display:flex;animation:stepIn .55s cubic-bezier(0.4,0,0.2,1) forwards}
+.ob-step.exit{animation:stepOut .4s cubic-bezier(0.4,0,0.2,1) forwards;pointer-events:none}
+@keyframes stepIn{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes stepOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-30px)}}
+
+/* ── Seal ── */
+.ob-seal{width:72px;height:72px;margin-bottom:28px;filter:drop-shadow(0 0 20px var(--gold));animation:sealGlow 2.5s ease-in-out infinite alternate}
+@keyframes sealGlow{from{filter:drop-shadow(0 0 10px var(--gold))}to{filter:drop-shadow(0 0 32px var(--gold-bright))}}
+.ob-seal svg{width:100%;height:100%}
+
+/* ── Typography ── */
+.ob-eyebrow{font-family:var(--font-display);font-size:.58rem;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:14px;display:inline-flex;align-items:center;gap:8px}
+.ob-eyebrow::before,.ob-eyebrow::after{content:'';display:block;width:20px;height:1px;background:linear-gradient(90deg,transparent,var(--gold))}
+.ob-eyebrow::after{background:linear-gradient(90deg,var(--gold),transparent)}
+.ob-title{font-family:var(--font-display);font-size:clamp(1.6rem,4vw,2.4rem);font-weight:900;letter-spacing:.06em;line-height:1.15;color:var(--cream);margin-bottom:12px}
+.ob-title span{color:var(--gold-bright)}
+.ob-sub{font-family:var(--font-serif);font-size:1.05rem;font-style:italic;line-height:1.85;color:var(--cream-muted);max-width:480px;margin-bottom:36px}
+
+/* ── T&C Card ── */
+.tc-card{width:100%;background:var(--card-bg);border:1px solid var(--card-border);border-radius:18px;padding:28px 30px;margin-bottom:24px;position:relative;overflow:hidden;text-align:left}
+.tc-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.tc-section{margin-bottom:20px}
+.tc-section:last-child{margin-bottom:0}
+.tc-section-title{font-family:var(--font-display);font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-pale);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.tc-section-title i{color:var(--gold);font-size:.7rem}
+.tc-section-body{font-family:var(--font-serif);font-size:.95rem;line-height:1.8;color:var(--cream-muted)}
+.tc-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,.12),transparent);margin:18px 0}
+
+/* ── Checkbox ── */
+.tc-agree-row{display:flex;align-items:flex-start;gap:14px;background:rgba(201,168,76,.04);border:1px solid rgba(201,168,76,.14);border-radius:12px;padding:16px 18px;margin-bottom:10px;cursor:pointer;transition:var(--tr);text-align:left}
+.tc-agree-row:hover{background:rgba(201,168,76,.08);border-color:rgba(201,168,76,.28)}
+.tc-agree-row.checked{background:rgba(201,168,76,.1);border-color:rgba(201,168,76,.4)}
+.custom-checkbox{width:22px;height:22px;border-radius:6px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:var(--tr);margin-top:1px}
+.custom-checkbox.checked{background:var(--gold);border-color:var(--gold-bright)}
+.custom-checkbox i{font-size:.65rem;color:var(--obsidian);opacity:0;transform:scale(0);transition:var(--tr)}
+.custom-checkbox.checked i{opacity:1;transform:scale(1)}
+.tc-agree-text{font-family:var(--font-body);font-size:.83rem;line-height:1.65;color:var(--cream-muted);flex:1}
+.tc-agree-text strong{color:var(--cream-dim);font-weight:500}
+
+/* ── Privacy badge ── */
+.pp-badge{display:inline-flex;align-items:center;gap:9px;background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.18);border-radius:100px;padding:8px 18px;font-family:var(--font-display);font-size:.6rem;font-weight:600;letter-spacing:.12em;color:var(--gold-dim);text-transform:uppercase;margin-bottom:32px;transition:var(--tr);cursor:pointer}
+.pp-badge:hover{background:rgba(201,168,76,.12);border-color:var(--gold);color:var(--gold)}
+.pp-badge i{font-size:.72rem;color:var(--gold)}
+
+/* ── Buttons ── */
+.ob-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;font-family:var(--font-display);font-size:.78rem;font-weight:700;letter-spacing:.1em;border:none;padding:15px 36px;border-radius:11px;cursor:pointer;transition:var(--tr);position:relative;overflow:hidden;width:100%}
+.ob-btn::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.14),transparent);opacity:0;transition:var(--tr)}
+.ob-btn:hover::after{opacity:1}
+.ob-btn-primary{color:var(--obsidian);background:linear-gradient(135deg,var(--gold-bright),var(--gold));box-shadow:0 6px 28px var(--gold-glow)}
+.ob-btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 44px var(--gold-glow-strong)}
+.ob-btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.ob-btn-ghost{color:var(--gold);background:transparent;border:1px solid rgba(201,168,76,.3);box-shadow:none;margin-top:10px}
+.ob-btn-ghost:hover{background:rgba(201,168,76,.08);border-color:var(--gold)}
+
+/* ── Name Input ── */
+.name-input-wrap{width:100%;position:relative;margin-bottom:14px}
+.name-input{width:100%;background:rgba(201,168,76,.04);border:1px solid rgba(201,168,76,.2);border-radius:12px;padding:16px 20px;font-family:var(--font-serif);font-size:1.3rem;font-weight:400;color:var(--cream);outline:none;transition:var(--tr);text-align:center;letter-spacing:.04em}
+.name-input::placeholder{color:rgba(122,110,90,.5)}
+.name-input:focus{border-color:rgba(201,168,76,.55);background:rgba(201,168,76,.07);box-shadow:0 0 0 3px rgba(201,168,76,.09)}
+.name-hint{font-family:var(--font-serif);font-size:.85rem;font-style:italic;color:var(--cream-muted);margin-bottom:28px}
+
+/* ── Welcome animation ── */
+.welcome-name{color:var(--gold-bright)}
+.welcome-orb{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,.18),transparent 70%);border:1px solid rgba(201,168,76,.25);display:flex;align-items:center;justify-content:center;margin:0 auto 32px;animation:welcomePulse 2s ease-in-out infinite alternate;font-size:2.5rem}
+@keyframes welcomePulse{from{box-shadow:0 0 30px rgba(201,168,76,.15)}to{box-shadow:0 0 70px rgba(201,168,76,.4),0 0 120px rgba(201,168,76,.12)}}
+
+/* ── Progress dots ── */
+.ob-dots{display:flex;gap:8px;margin-bottom:36px}
+.ob-dot{width:6px;height:6px;border-radius:50%;background:rgba(201,168,76,.2);transition:var(--tr)}
+.ob-dot.active{background:var(--gold-bright);box-shadow:0 0 8px var(--gold);width:22px;border-radius:3px}
+.ob-dot.done{background:rgba(201,168,76,.5)}
+
+/* ── Enter btn special ── */
+.enter-btn-glow{animation:enterGlow 2s ease-in-out infinite alternate}
+@keyframes enterGlow{from{box-shadow:0 6px 28px var(--gold-glow)}to{box-shadow:0 10px 48px var(--gold-glow-strong),0 0 80px rgba(201,168,76,.1)}}
+</style>
+</head>
+<body>
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<div class="grid-bg"></div>
+<div class="bg-orb-1"></div>
+<div class="bg-orb-2"></div>
+<div class="radial-beam"></div>
+<div class="float-particles" id="floatParticles"></div>
+
+<!-- Firebase compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="auth.js"></script>
+
+<div class="ob-wrap">
+
+  <!-- ── STEP 1: Terms & Conditions ── -->
+  <div class="ob-step active" id="step1">
+    <div class="ob-dots">
+      <div class="ob-dot active" id="dot1"></div>
+      <div class="ob-dot" id="dot2"></div>
+      <div class="ob-dot" id="dot3"></div>
+    </div>
+    <div class="ob-seal">
+      <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="40,4 74,22 74,58 40,76 6,58 6,22" fill="none" stroke="#C9A84C" stroke-width="1.5"/>
+        <polygon points="40,12 68,27 68,53 40,68 12,53 12,27" fill="none" stroke="#C9A84C" stroke-width=".7" opacity=".5"/>
+        <path d="M40 20L32 34H48L40 20Z" fill="#C9A84C" opacity=".9"/>
+        <rect x="36" y="34" width="8" height="16" fill="#C9A84C" opacity=".9"/>
+        <rect x="30" y="50" width="20" height="4" rx="1" fill="#C9A84C" opacity=".7"/>
+      </svg>
+    </div>
+    <div class="ob-eyebrow">Before You Enter</div>
+    <h2 class="ob-title">Terms &amp; <span>Conditions</span></h2>
+    <p class="ob-sub">Please review and accept our terms to continue. This ensures you understand how Lawlite works and protects your rights.</p>
+
+    <div class="tc-card">
+      <div class="tc-section">
+        <div class="tc-section-title"><i class="fas fa-gavel"></i> Not Legal Advice</div>
+        <div class="tc-section-body">Lawlite provides AI-assisted legal document analysis for informational purposes only. Our analysis does not constitute legal advice. Always consult a qualified attorney for legal decisions.</div>
+      </div>
+      <div class="tc-divider"></div>
+      <div class="tc-section">
+        <div class="tc-section-title"><i class="fas fa-shield-alt"></i> Your Data &amp; Privacy</div>
+        <div class="tc-section-body">Documents you upload are processed in real-time and never stored on our servers. We do not retain, sell, or share your legal documents or personal information with third parties.</div>
+      </div>
+      <div class="tc-divider"></div>
+      <div class="tc-section">
+        <div class="tc-section-title"><i class="fas fa-robot"></i> AI Limitations</div>
+        <div class="tc-section-body">AI analysis may not be 100% accurate. Results should be reviewed by a professional for critical legal matters. You use Lawlite at your own discretion.</div>
+      </div>
+    </div>
+
+    <div class="tc-agree-row" id="tcRow" onclick="toggleTC()">
+      <div class="custom-checkbox" id="tcCheck"><i class="fas fa-check"></i></div>
+      <div class="tc-agree-text">I have read and agree to the <strong>Terms &amp; Conditions</strong> of Lawlite. I understand this is an AI tool and not a substitute for professional legal advice.</div>
+    </div>
+
+    <div class="pp-badge" onclick="window.open('#','_blank')">
+      <i class="fas fa-lock"></i> Privacy Policy — Zero Data Retention Guaranteed
+    </div>
+
+    <button class="ob-btn ob-btn-primary" id="tcNextBtn" onclick="goToStep2()" disabled style="cursor:pointer">
+      <i class="fas fa-chevron-right"></i> I Agree — Continue
+    </button>
+  </div>
+
+  <!-- ── STEP 2: What to call you ── -->
+  <div class="ob-step" id="step2">
+    <div class="ob-dots">
+      <div class="ob-dot done" id="dot1b"></div>
+      <div class="ob-dot active" id="dot2b"></div>
+      <div class="ob-dot" id="dot3b"></div>
+    </div>
+    <div class="ob-seal" style="margin-bottom:20px">
+      <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="40,4 74,22 74,58 40,76 6,58 6,22" fill="none" stroke="#C9A84C" stroke-width="1.5"/>
+        <polygon points="40,12 68,27 68,53 40,68 12,53 12,27" fill="none" stroke="#C9A84C" stroke-width=".7" opacity=".5"/>
+        <path d="M40 20L32 34H48L40 20Z" fill="#C9A84C" opacity=".9"/>
+        <rect x="36" y="34" width="8" height="16" fill="#C9A84C" opacity=".9"/>
+        <rect x="30" y="50" width="20" height="4" rx="1" fill="#C9A84C" opacity=".7"/>
+      </svg>
+    </div>
+    <div class="ob-eyebrow">Almost There</div>
+    <h2 class="ob-title">What Shall We<br><span>Call You?</span></h2>
+    <p class="ob-sub">How would you like Lawlite to address you? This is how our AI will greet you inside the chamber.</p>
+
+    <div class="name-input-wrap">
+      <input class="name-input" id="preferredName" type="text" placeholder="Your preferred name…" maxlength="40" autocomplete="off" oninput="onNameInput()" onkeydown="onNameKey(event)"/>
+    </div>
+    <p class="name-hint">Could be your first name, nickname, or title — it's yours to choose.</p>
+
+    <button class="ob-btn ob-btn-primary" id="nameNextBtn" onclick="goToStep3()" disabled style="cursor:pointer">
+      <i class="fas fa-scroll"></i> Enter the World of Lawlite
+    </button>
+    <button class="ob-btn ob-btn-ghost" onclick="goToStep3(true)" style="cursor:pointer">
+      Skip — Use my account name
+    </button>
+  </div>
+
+  <!-- ── STEP 3: Welcome animation ── -->
+  <div class="ob-step" id="step3">
+    <div class="ob-dots">
+      <div class="ob-dot done"></div>
+      <div class="ob-dot done"></div>
+      <div class="ob-dot active"></div>
+    </div>
+    <div class="welcome-orb">⚖</div>
+    <div class="ob-eyebrow">Welcome to Lawlite</div>
+    <h2 class="ob-title" id="welcomeTitle">Welcome, <span class="welcome-name" id="welcomeName">Counsellor</span>.</h2>
+    <p class="ob-sub" id="welcomeSub">Your AI legal intelligence chamber is ready. Every document, every clause, every obligation — illuminated.</p>
+
+    <button class="ob-btn ob-btn-primary enter-btn-glow" id="enterBtn" onclick="enterAnalyzer()" style="cursor:pointer">
+      <i class="fas fa-scale-balanced"></i> Enter Lawlite
+    </button>
+  </div>
+
+</div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────────
+// Change this to your analyzer URL (separate server or same domain)
+const ANALYZER_URL = 'http://localhost:3000';
+
+// ── Cursor ──────────────────────────────────────────────────────────────────
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove', e => { mx=e.clientX; my=e.clientY; cursor.style.left=mx+'px'; cursor.style.top=my+'px'; });
+(function anim(){ rx+=(mx-rx)*.12; ry+=(my-ry)*.12; ring.style.left=rx+'px'; ring.style.top=ry+'px'; requestAnimationFrame(anim); })();
+
+// ── Particles ───────────────────────────────────────────────────────────────
+(function(){
+  const w = document.getElementById('floatParticles');
+  for(let i=0;i<18;i++){
+    const p = document.createElement('div'); p.className='float-p';
+    p.style.cssText=`left:${Math.random()*100}%;animation-duration:${8+Math.random()*10}s;animation-delay:${Math.random()*8}s;--dx:${(Math.random()-.5)*55}px`;
+    w.appendChild(p);
+  }
+})();
+
+// ── Auth guard ───────────────────────────────────────────────────────────────
+// If already onboarded, skip straight to analyzer
+if(localStorage.getItem('lawlite_onboarded')){
+  window.location.replace(ANALYZER_URL);
+}
+
+Auth.onAuthChange(function(user){
+  if(!user || !user.emailVerified){
+    window.location.replace('login.html');
+  }
+});
+
+// ── State ────────────────────────────────────────────────────────────────────
+let tcAccepted = false;
+
+// ── Toggle T&C checkbox ──────────────────────────────────────────────────────
+function toggleTC(){
+  tcAccepted = !tcAccepted;
+  document.getElementById('tcCheck').classList.toggle('checked', tcAccepted);
+  document.getElementById('tcRow').classList.toggle('checked', tcAccepted);
+  document.getElementById('tcNextBtn').disabled = !tcAccepted;
+}
+
+// ── Step transitions ─────────────────────────────────────────────────────────
+function transitionTo(fromId, toId){
+  const from = document.getElementById(fromId);
+  const to = document.getElementById(toId);
+  from.classList.add('exit');
+  setTimeout(()=>{
+    from.classList.remove('active','exit');
+    from.style.display='none';
+    to.style.display='flex';
+    to.classList.add('active');
+    if(toId === 'step2') setTimeout(()=>document.getElementById('preferredName').focus(), 400);
+  }, 420);
+}
+
+function goToStep2(){
+  if(!tcAccepted) return;
+  transitionTo('step1','step2');
+}
+
+function onNameInput(){
+  const val = document.getElementById('preferredName').value.trim();
+  document.getElementById('nameNextBtn').disabled = val.length < 1;
+}
+
+function onNameKey(e){
+  if(e.key==='Enter'){
+    const val = document.getElementById('preferredName').value.trim();
+    if(val.length >= 1) goToStep3();
+  }
+}
+
+function goToStep3(useAccountName){
+  let name;
+  if(useAccountName){
+    const user = Auth.currentUser();
+    name = user && user.displayName ? user.displayName.split(' ')[0] : 'Counsellor';
+  } else {
+    name = document.getElementById('preferredName').value.trim() || 'Counsellor';
+  }
+  // Store preferred name
+  localStorage.setItem('lawlite_name', name);
+  // Update welcome screen
+  document.getElementById('welcomeName').textContent = name;
+  transitionTo('step2','step3');
+  // Auto-redirect after 4s
+  setTimeout(enterAnalyzer, 4200);
+}
+
+function enterAnalyzer(){
+  localStorage.setItem('lawlite_onboarded', '1');
+  // Fade out then redirect
+  document.querySelector('.ob-wrap').style.transition='opacity .7s ease,transform .7s ease';
+  document.querySelector('.ob-wrap').style.opacity='0';
+  document.querySelector('.ob-wrap').style.transform='scale(1.03)';
+  setTimeout(()=>{ window.location.replace(ANALYZER_URL); }, 700);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sign Up — Lawlite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --obsidian:#07060A;--obsidian-mid:#0E0C14;
+  --gold:#C9A84C;--gold-bright:#F0C040;--gold-pale:#EDD98A;--gold-dim:#7A6024;
+  --gold-glow:rgba(201,168,76,.22);--gold-glow-strong:rgba(240,192,64,.38);
+  --cream:#F5EDD6;--cream-dim:#C8B88A;--cream-muted:#7A6E5A;
+  --card-bg:#0E0C14;--card-border:rgba(201,168,76,.18);
+  --success:#4ADE80;--danger:#F87171;--warn:#FBBF24;
+  --font-display:'Cinzel',serif;--font-serif:'Cormorant Garamond',serif;--font-body:'DM Sans',sans-serif;
+  --tr:all 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--obsidian);color:var(--cream);font-family:var(--font-body);min-height:100vh;display:flex;flex-direction:column;cursor:none;overflow-x:hidden}
+@media(max-width:768px){body{cursor:auto}}
+::selection{background:var(--gold);color:var(--obsidian)}
+a{text-decoration:none}
+
+/* Cursor */
+#cursor{position:fixed;width:10px;height:10px;background:var(--gold-bright);border-radius:50%;pointer-events:none;z-index:99999;transform:translate(-50%,-50%);mix-blend-mode:screen}
+#cursor-ring{position:fixed;width:34px;height:34px;border:1px solid var(--gold);border-radius:50%;pointer-events:none;z-index:99998;transform:translate(-50%,-50%);opacity:.6}
+@media(max-width:768px){#cursor,#cursor-ring{display:none}}
+
+/* Background */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");pointer-events:none;z-index:1;opacity:.5}
+.grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(201,168,76,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(201,168,76,.025) 1px,transparent 1px);background-size:72px 72px;pointer-events:none;z-index:0}
+.bg-orb{position:fixed;border-radius:50%;pointer-events:none;z-index:0}
+.bg-orb-1{width:700px;height:700px;background:radial-gradient(circle,rgba(201,168,76,.055) 0%,transparent 65%);top:-200px;left:-180px;animation:orbFloat 13s ease-in-out infinite alternate}
+.bg-orb-2{width:500px;height:500px;background:radial-gradient(circle,rgba(120,80,10,.07) 0%,transparent 65%);bottom:-150px;right:-120px;animation:orbFloat 17s ease-in-out infinite alternate-reverse}
+@keyframes orbFloat{from{transform:translate(0,0)}to{transform:translate(22px,-22px)}}
+
+/* Floating particles */
+.float-particles{position:fixed;inset:0;pointer-events:none;z-index:0}
+.float-p{position:absolute;width:1.5px;height:1.5px;border-radius:50%;background:var(--gold-pale);opacity:0;animation:floatUp linear infinite}
+@keyframes floatUp{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:.7}90%{opacity:.3}100%{transform:translateY(-40px) translateX(var(--dx));opacity:0}}
+
+/* Navbar */
+.auth-nav{position:fixed;top:0;left:0;right:0;z-index:100;height:68px;padding:0 5%;display:flex;align-items:center;background:rgba(7,6,10,.85);backdrop-filter:blur(24px);border-bottom:1px solid rgba(201,168,76,.09)}
+.nav-brand{display:flex;align-items:center;gap:12px;cursor:none}
+.nav-brand-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--gold-bright),var(--gold));border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 14px var(--gold-glow);transition:var(--tr)}
+.nav-brand:hover .nav-brand-icon{box-shadow:0 0 26px var(--gold-glow-strong);transform:scale(1.07) rotate(-3deg)}
+.nav-brand-icon svg{width:19px;height:19px;fill:var(--obsidian)}
+.nav-brand-name{font-family:var(--font-display);font-size:1rem;font-weight:700;letter-spacing:.15em;color:var(--cream)}
+.nav-brand-name span{color:var(--gold-bright)}
+.nav-back{margin-left:auto;font-family:var(--font-display);font-size:.65rem;font-weight:600;letter-spacing:.1em;color:var(--cream-muted);display:flex;align-items:center;gap:8px;transition:var(--tr);cursor:none;text-transform:uppercase}
+.nav-back:hover{color:var(--gold)}
+
+/* Auth page */
+.auth-page{flex:1;display:flex;align-items:center;justify-content:center;padding:110px 20px 50px;position:relative;z-index:2}
+.auth-split{display:flex;width:100%;max-width:920px;border-radius:22px;overflow:hidden;box-shadow:0 28px 100px rgba(0,0,0,.7),0 0 60px rgba(201,168,76,.07);border:1px solid var(--card-border);animation:cardIn .5s ease}
+@keyframes cardIn{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+
+/* Left panel */
+.auth-panel-left{width:270px;flex-shrink:0;background:linear-gradient(160deg,rgba(14,12,20,1),rgba(22,19,31,1));padding:48px 32px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid rgba(201,168,76,.12);position:relative;overflow:hidden}
+.auth-panel-left::before{content:'';position:absolute;bottom:-80px;right:-80px;width:200px;height:200px;background:radial-gradient(circle,rgba(201,168,76,.09),transparent 70%);border-radius:50%;pointer-events:none}
+.panel-seal{width:52px;height:52px;margin-bottom:26px;filter:drop-shadow(0 0 14px var(--gold));animation:sealGlow 3s ease-in-out infinite alternate}
+@keyframes sealGlow{from{filter:drop-shadow(0 0 8px var(--gold))}to{filter:drop-shadow(0 0 22px var(--gold-bright))}}
+.panel-seal svg{width:100%;height:100%}
+.panel-title{font-family:var(--font-display);font-size:1.2rem;font-weight:900;letter-spacing:.1em;color:var(--cream);margin-bottom:10px;line-height:1.3}
+.panel-title span{color:var(--gold-bright);display:block}
+.panel-sub{font-family:var(--font-serif);font-size:.92rem;line-height:1.8;color:var(--cream-muted);margin-bottom:28px;font-style:italic}
+.panel-perks{display:flex;flex-direction:column;gap:12px}
+.panel-perk{display:flex;align-items:center;gap:10px;font-family:var(--font-body);font-size:.78rem;color:var(--cream-muted)}
+.panel-perk-icon{width:26px;height:26px;border-radius:6px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.2);display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--gold);flex-shrink:0}
+@media(max-width:700px){.auth-panel-left{display:none}}
+
+/* Form card */
+.auth-card{flex:1;background:var(--card-bg);padding:44px 40px;position:relative;overflow:hidden}
+.auth-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.auth-card-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.2);padding:5px 16px;border-radius:100px;font-family:var(--font-display);font-size:.58rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:20px}
+.auth-card-title{font-family:var(--font-display);font-size:1.55rem;font-weight:900;letter-spacing:.08em;color:var(--cream);margin-bottom:8px;line-height:1.2}
+.auth-card-title span{color:var(--gold-bright)}
+.auth-card-sub{font-family:var(--font-serif);font-size:.92rem;font-style:italic;color:var(--cream-muted);line-height:1.7;margin-bottom:26px}
+
+/* Form */
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-family:var(--font-display);font-size:.58rem;font-weight:600;letter-spacing:.12em;color:var(--cream-dim);margin-bottom:8px;text-transform:uppercase}
+.form-input-wrap{position:relative;display:flex;align-items:center}
+.form-input-icon{position:absolute;left:14px;color:var(--cream-muted);font-size:.82rem;pointer-events:none;transition:var(--tr);z-index:1}
+.form-input{width:100%;background:rgba(201,168,76,.04);border:1px solid rgba(201,168,76,.18);border-radius:10px;padding:12px 14px 12px 40px;font-family:var(--font-body);font-size:.88rem;color:var(--cream);outline:none;transition:var(--tr)}
+.form-input::placeholder{color:var(--cream-muted)}
+.form-input:focus{border-color:rgba(201,168,76,.5);background:rgba(201,168,76,.07);box-shadow:0 0 0 3px rgba(201,168,76,.08)}
+.form-input-wrap:focus-within .form-input-icon{color:var(--gold)}
+.pw-toggle{position:absolute;right:14px;background:none;border:none;color:var(--cream-muted);cursor:none;font-size:.82rem;transition:var(--tr);padding:2px;z-index:1}
+.pw-toggle:hover{color:var(--gold)}
+
+/* Password strength */
+.pw-strength{margin-top:8px;display:flex;flex-direction:column;gap:5px}
+.pw-strength-bars{display:flex;gap:4px}
+.pw-bar{height:2.5px;flex:1;border-radius:3px;background:rgba(201,168,76,.1);transition:var(--tr)}
+.pw-bar.weak{background:var(--danger)}
+.pw-bar.medium{background:var(--warn)}
+.pw-bar.strong{background:var(--success)}
+.pw-strength-label{font-family:var(--font-display);font-size:.55rem;color:var(--cream-muted);letter-spacing:.1em}
+
+/* Submit */
+.form-submit{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--font-display);font-size:.78rem;font-weight:700;letter-spacing:.1em;color:var(--obsidian);background:linear-gradient(135deg,var(--gold-bright),var(--gold));border:none;padding:15px;border-radius:10px;cursor:none;transition:var(--tr);box-shadow:0 6px 28px var(--gold-glow);margin-top:22px;position:relative;overflow:hidden}
+.form-submit::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);opacity:0;transition:var(--tr)}
+.form-submit:hover{transform:translateY(-2px);box-shadow:0 12px 40px var(--gold-glow-strong)}
+.form-submit:hover::after{opacity:1}
+.form-submit:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* Alerts */
+.form-error{display:none;align-items:center;gap:8px;background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.25);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.79rem;color:#FCA5A5}
+.form-error.show{display:flex}
+
+/* ── Verification Success State ── */
+#verifyScreen{display:none;flex-direction:column;align-items:center;text-align:center;padding:20px 0}
+#verifyScreen.show{display:flex}
+.verify-icon-wrap{width:88px;height:88px;background:rgba(74,222,128,.07);border:2px solid rgba(74,222,128,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:24px;animation:verifyPop .5s cubic-bezier(0.175,0.885,0.32,1.275) forwards,successGlow 2s 0.5s ease-in-out infinite alternate}
+@keyframes verifyPop{from{transform:scale(0.4);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes successGlow{from{box-shadow:0 0 20px rgba(74,222,128,.2)}to{box-shadow:0 0 40px rgba(74,222,128,.45),0 0 80px rgba(74,222,128,.15)}}
+.verify-icon-wrap i{font-size:2.2rem;color:var(--success)}
+.verify-title{font-family:var(--font-display);font-size:1.3rem;font-weight:900;letter-spacing:.08em;color:var(--cream);margin-bottom:8px}
+.verify-title span{color:var(--success)}
+.verify-sub{font-family:var(--font-serif);font-size:1rem;font-style:italic;line-height:1.8;color:var(--cream-muted);max-width:340px;margin-bottom:20px}
+.verify-email-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.2);padding:8px 18px;border-radius:100px;font-family:var(--font-body);font-size:.82rem;color:var(--success);margin-bottom:28px;word-break:break-all}
+.verify-steps{background:rgba(201,168,76,.04);border:1px solid rgba(201,168,76,.12);border-radius:12px;padding:18px 20px;margin-bottom:24px;display:flex;flex-direction:column;gap:10px;text-align:left;width:100%}
+.verify-step{display:flex;align-items:flex-start;gap:10px;font-size:.8rem;color:var(--cream-muted);line-height:1.5}
+.verify-step-num{width:22px;height:22px;border-radius:50%;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.22);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:.6rem;color:var(--gold);flex-shrink:0;margin-top:1px}
+.btn-goto-login{display:inline-flex;align-items:center;gap:10px;font-family:var(--font-display);font-size:.75rem;font-weight:700;letter-spacing:.1em;color:var(--obsidian);background:linear-gradient(135deg,var(--gold-bright),var(--gold));border:none;padding:13px 30px;border-radius:10px;cursor:none;transition:var(--tr);box-shadow:0 6px 28px var(--gold-glow);margin-bottom:14px;width:100%;justify-content:center}
+.btn-goto-login:hover{transform:translateY(-2px);box-shadow:0 12px 40px var(--gold-glow-strong)}
+.btn-resend{background:transparent;border:1px solid rgba(201,168,76,.25);border-radius:10px;padding:10px;width:100%;font-family:var(--font-display);font-size:.65rem;font-weight:600;letter-spacing:.1em;color:var(--cream-muted);cursor:none;transition:var(--tr);text-transform:uppercase}
+.btn-resend:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.06)}
+.btn-resend:disabled{opacity:.4;cursor:not-allowed}
+.resend-countdown{font-family:var(--font-display);font-size:.6rem;color:var(--cream-muted);letter-spacing:.1em;margin-top:8px;text-align:center}
+
+/* Perks bar */
+.auth-perks{display:flex;flex-direction:column;gap:7px;margin-bottom:22px;background:rgba(201,168,76,.03);border:1px solid rgba(201,168,76,.1);border-radius:12px;padding:14px 16px}
+.auth-perk{display:flex;align-items:center;gap:10px;font-size:.78rem;color:var(--cream-muted)}
+.auth-perk i{color:var(--gold);width:14px;text-align:center;flex-shrink:0}
+
+/* Divider & switch */
+.auth-divider{display:flex;align-items:center;gap:14px;margin:18px 0;color:var(--cream-muted);font-size:.7rem}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:rgba(201,168,76,.1)}
+.auth-switch{text-align:center;font-family:var(--font-serif);font-size:.9rem;font-style:italic;color:var(--cream-muted);margin-top:14px}
+.auth-switch a{color:var(--gold-bright);font-weight:600;cursor:none;transition:var(--tr);font-style:normal;font-family:var(--font-display);font-size:.72rem;letter-spacing:.06em}
+.auth-switch a:hover{text-decoration:underline}
+
+/* Ornament */
+.ornament-line{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.ornament-line::before,.ornament-line::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,.25))}
+.ornament-line::after{background:linear-gradient(90deg,rgba(201,168,76,.25),transparent)}
+.ornament-diamond{width:6px;height:6px;background:var(--gold);transform:rotate(45deg);flex-shrink:0}
+</style>
+</head>
+<body>
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<div class="grid-bg"></div>
+<div class="bg-orb bg-orb-1"></div>
+<div class="bg-orb bg-orb-2"></div>
+<div class="float-particles" id="floatParticles"></div>
+
+<!-- Firebase compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="auth.js"></script>
+
+<nav class="auth-nav">
+  <a href="index.html" class="nav-brand">
+    <div class="nav-brand-icon">
+      <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 1L3 5v5c0 4.5 3 8.5 7 10 4-1.5 7-5.5 7-10V5L10 1z"/></svg>
+    </div>
+    <span class="nav-brand-name">LAW<span>LITE</span></span>
+  </a>
+  <a href="index.html" class="nav-back"><i class="fas fa-arrow-left"></i> Back to Home</a>
+</nav>
+
+<div class="auth-page">
+  <div class="auth-split">
+    <!-- Left panel -->
+    <div class="auth-panel-left">
+      <div class="panel-seal">
+        <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="40,4 74,22 74,58 40,76 6,58 6,22" fill="none" stroke="#C9A84C" stroke-width="1.5"/>
+          <polygon points="40,12 68,27 68,53 40,68 12,53 12,27" fill="none" stroke="#C9A84C" stroke-width=".7" opacity=".5"/>
+          <path d="M40 20L32 34H48L40 20Z" fill="#C9A84C" opacity=".9"/>
+          <rect x="36" y="34" width="8" height="16" fill="#C9A84C" opacity=".9"/>
+          <rect x="30" y="50" width="20" height="4" rx="1" fill="#C9A84C" opacity=".7"/>
+        </svg>
+      </div>
+      <div class="panel-title">Join<span>Lawlite.</span></div>
+      <div class="panel-sub">Create your free account and unlock AI-powered legal clarity in seconds.</div>
+      <div class="panel-perks">
+        <div class="panel-perk"><div class="panel-perk-icon"><i class="fas fa-check"></i></div> Free AI document analysis</div>
+        <div class="panel-perk"><div class="panel-perk-icon"><i class="fas fa-comments"></i></div> Chat with your documents</div>
+        <div class="panel-perk"><div class="panel-perk-icon"><i class="fas fa-language"></i></div> English + Kannada</div>
+        <div class="panel-perk"><div class="panel-perk-icon"><i class="fas fa-infinity"></i></div> No credit card ever</div>
+      </div>
+    </div>
+
+    <!-- Form card -->
+    <div class="auth-card">
+
+      <!-- ── SIGN-UP FORM (default view) ── -->
+      <div id="signupForm">
+        <div class="auth-card-badge"><i class="fas fa-scroll"></i> Create Your Account</div>
+        <div class="auth-card-title">Join <span>Lawlite</span></div>
+        <div class="auth-card-sub">Start analyzing legal documents with the power of AI.</div>
+
+        <div class="ornament-line"><div class="ornament-diamond"></div></div>
+
+        <div class="auth-perks">
+          <div class="auth-perk"><i class="fas fa-check-circle"></i> Free AI legal document analysis</div>
+          <div class="auth-perk"><i class="fas fa-check-circle"></i> AI chat assistant for document Q&amp;A</div>
+          <div class="auth-perk"><i class="fas fa-check-circle"></i> English + Kannada language support</div>
+          <div class="auth-perk"><i class="fas fa-lock"></i> No credit card required</div>
+        </div>
+
+        <div class="form-error" id="formError"><i class="fas fa-exclamation-circle"></i><span id="errorText">Something went wrong.</span></div>
+
+        <div class="form-group">
+          <label class="form-label" for="nameInput">Full Name</label>
+          <div class="form-input-wrap">
+            <i class="fas fa-user form-input-icon"></i>
+            <input class="form-input" id="nameInput" type="text" placeholder="Your full name" autocomplete="name"/>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="emailInput">Email Address</label>
+          <div class="form-input-wrap">
+            <i class="fas fa-envelope form-input-icon"></i>
+            <input class="form-input" id="emailInput" type="email" placeholder="you@example.com" autocomplete="email"/>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="passwordInput">Password</label>
+          <div class="form-input-wrap">
+            <i class="fas fa-lock form-input-icon"></i>
+            <input class="form-input" id="passwordInput" type="password" placeholder="Min. 6 characters" autocomplete="new-password" oninput="checkStrength(this.value)"/>
+            <button class="pw-toggle" type="button" onclick="togglePw()"><i class="fas fa-eye" id="eyeIcon"></i></button>
+          </div>
+          <div class="pw-strength" id="pwStrength" style="display:none">
+            <div class="pw-strength-bars">
+              <div class="pw-bar" id="bar1"></div><div class="pw-bar" id="bar2"></div>
+              <div class="pw-bar" id="bar3"></div><div class="pw-bar" id="bar4"></div>
+            </div>
+            <div class="pw-strength-label" id="strengthLabel">WEAK</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="confirmInput">Confirm Password</label>
+          <div class="form-input-wrap">
+            <i class="fas fa-lock form-input-icon"></i>
+            <input class="form-input" id="confirmInput" type="password" placeholder="Repeat your password" autocomplete="new-password"/>
+          </div>
+        </div>
+
+        <button class="form-submit" id="submitBtn" onclick="handleSignup()">
+          <i class="fas fa-scroll"></i> Claim Your Free Access
+        </button>
+
+        <div class="auth-divider">already a member?</div>
+        <div class="auth-switch">Sign in at <a href="login.html">the Login Portal</a></div>
+      </div>
+
+      <!-- ── EMAIL VERIFICATION SUCCESS VIEW ── -->
+      <div id="verifyScreen">
+        <div class="verify-icon-wrap">
+          <i class="fas fa-envelope-circle-check"></i>
+        </div>
+        <div class="verify-title">Sign Up <span>Successful!</span></div>
+        <div class="verify-sub">Your account has been created. We've sent a verification link to:</div>
+        <div class="verify-email-badge"><i class="fas fa-envelope"></i><span id="verifyEmailDisplay"></span></div>
+
+        <div class="verify-steps">
+          <div class="verify-step">
+            <div class="verify-step-num">1</div>
+            <span>Open your inbox and find the email from <strong style="color:var(--gold-pale)">Lawlite</strong></span>
+          </div>
+          <div class="verify-step">
+            <div class="verify-step-num">2</div>
+            <span>Click the <strong style="color:var(--gold-pale)">Verify Email</strong> link inside that email</span>
+          </div>
+          <div class="verify-step">
+            <div class="verify-step-num">3</div>
+            <span>Return here and log in to access your AI legal dashboard</span>
+          </div>
+        </div>
+
+        <a href="login.html" class="btn-goto-login"><i class="fas fa-sign-in-alt"></i> Go to Login</a>
+
+        <button class="btn-resend" id="resendBtn" onclick="handleResend()">
+          <i class="fas fa-paper-plane"></i> Resend Verification Email
+        </button>
+        <div class="resend-countdown" id="resendCountdown"></div>
+      </div>
+
+    </div><!-- /auth-card -->
+  </div><!-- /auth-split -->
+</div><!-- /auth-page -->
+
+<script>
+// ── Cursor ────────────────────────────────────────────────────────────────────
+const cursor=document.getElementById('cursor');
+const ring=document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{ mx=e.clientX;my=e.clientY;cursor.style.left=mx+'px';cursor.style.top=my+'px'; });
+(function anim(){ rx+=(mx-rx)*.12;ry+=(my-ry)*.12;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(anim); })();
+
+// ── Floating particles ────────────────────────────────────────────────────────
+(function(){
+  const wrap=document.getElementById('floatParticles');
+  for(let i=0;i<16;i++){
+    const p=document.createElement('div');p.className='float-p';
+    p.style.cssText=`left:${Math.random()*100}%;animation-duration:${8+Math.random()*10}s;animation-delay:${Math.random()*10}s;--dx:${(Math.random()-.5)*50}px`;
+    wrap.appendChild(p);
+  }
+})();
+
+// Redirect if already logged in
+Auth.onAuthChange(function(user){
+  // Do nothing on page load
+});
+
+// ── Password toggle ───────────────────────────────────────────────────────────
+function togglePw(){
+  const input=document.getElementById('passwordInput');
+  const icon=document.getElementById('eyeIcon');
+  const isText=input.type==='text';
+  input.type=isText?'password':'text';
+  icon.className=isText?'fas fa-eye':'fas fa-eye-slash';
+}
+
+// ── Password strength ─────────────────────────────────────────────────────────
+function checkStrength(pw){
+  const wrap=document.getElementById('pwStrength');
+  const label=document.getElementById('strengthLabel');
+  const bars=[document.getElementById('bar1'),document.getElementById('bar2'),document.getElementById('bar3'),document.getElementById('bar4')];
+  if(!pw){wrap.style.display='none';return;}
+  wrap.style.display='flex';
+  let score=0;
+  if(pw.length>=6)score++;
+  if(pw.length>=10)score++;
+  if(/[A-Z]/.test(pw)||/[0-9]/.test(pw))score++;
+  if(/[^A-Za-z0-9]/.test(pw))score++;
+  const cls=score<=1?'weak':score<=2?'medium':'strong';
+  const names={weak:'WEAK',medium:'GOOD',strong:'STRONG'};
+  bars.forEach((b,i)=>{ b.className='pw-bar '+(i<score?cls:''); });
+  label.textContent=names[cls]+' PASSWORD';
+  label.style.color=cls==='weak'?'var(--danger)':cls==='medium'?'var(--warn)':'var(--success)';
+}
+
+function showError(msg){
+  document.getElementById('errorText').textContent=msg;
+  document.getElementById('formError').classList.add('show');
+}
+
+// ── Signup handler ────────────────────────────────────────────────────────────
+function handleSignup(){
+  const name=document.getElementById('nameInput').value.trim();
+  const email=document.getElementById('emailInput').value.trim();
+  const password=document.getElementById('passwordInput').value;
+  const confirm=document.getElementById('confirmInput').value;
+  const btn=document.getElementById('submitBtn');
+
+  document.getElementById('formError').classList.remove('show');
+
+  if(!name){ showError('Please enter your full name.'); return; }
+  if(!email){ showError('Please enter your email address.'); return; }
+  if(password!==confirm){ showError('Passwords do not match.'); return; }
+  if(password.length<6){ showError('Password must be at least 6 characters.'); return; }
+
+  btn.disabled=true;
+  btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Creating your account...';
+
+  Auth.signup(name, email, password).then(function(result){
+    if(result.success){
+      // Show verification screen
+      document.getElementById('signupForm').style.display='none';
+      document.getElementById('verifyEmailDisplay').textContent=email;
+      document.getElementById('verifyScreen').classList.add('show');
+      // Store email for resend
+      window._signupEmail=email;
+      window._signupPw=password;
+    } else {
+      showError(result.error);
+      btn.disabled=false;
+      btn.innerHTML='<i class="fas fa-scroll"></i> Claim Your Free Access';
+    }
+  });
+}
+
+// ── Resend verification ───────────────────────────────────────────────────────
+var resendTimer=null;
+function handleResend(){
+  const btn=document.getElementById('resendBtn');
+  const countdown=document.getElementById('resendCountdown');
+  btn.disabled=true;
+  btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Sending...';
+
+  Auth.resendVerification(window._signupEmail, window._signupPw).then(function(result){
+    if(result.success){
+      btn.innerHTML='<i class="fas fa-check"></i> Email Sent!';
+      // 60s cooldown
+      let secs=60;
+      countdown.textContent='You can resend again in '+secs+'s';
+      resendTimer=setInterval(function(){
+        secs--;
+        countdown.textContent='You can resend again in '+secs+'s';
+        if(secs<=0){
+          clearInterval(resendTimer);
+          countdown.textContent='';
+          btn.disabled=false;
+          btn.innerHTML='<i class="fas fa-paper-plane"></i> Resend Verification Email';
+        }
+      },1000);
+    } else {
+      btn.disabled=false;
+      btn.innerHTML='<i class="fas fa-paper-plane"></i> Resend Verification Email';
+      countdown.textContent=result.error;
+      countdown.style.color='var(--danger)';
+    }
+  });
+}
+
+document.addEventListener('keydown',function(e){ if(e.key==='Enter') handleSignup(); });
+</script>
+</body>
+</html>

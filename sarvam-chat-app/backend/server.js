@@ -1,24 +1,22 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
-const axios = require("axios"); // 🔥 ADD THIS
+const axios = require("axios");
+const path = require("path"); // ✅ FIXED (moved up)
 
 const chatRoute = require("./routes/chat");
+
 console.log("ELEVEN KEY:", process.env.ELEVEN_API_KEY);
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'))); // put analyzer files in /public
-const path = require('path'); // add at top with other requires
+
+// ✅ now safe to use path
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.use("/chat", chatRoute);
-
-// ==============================
-// 🔊 TEXT TO SPEECH ROUTE
-// ==============================
-
 
 // ==============================
 

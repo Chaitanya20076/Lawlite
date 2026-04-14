@@ -71,7 +71,7 @@ window.Auth = (() => {
   function postAuthRedirect(fallback) {
     const onboarded = localStorage.getItem('lawlite_onboarded');
     if (onboarded) {
-      window.location.href = fallback || 'http://localhost:3000';
+      window.location.href = fallback || 'https://69da6afa2dbe183f0b83c56d--luxury-licorice-ea9b26.netlify.app/';
     } else {
       window.location.href = 'onboarding.html';
     }

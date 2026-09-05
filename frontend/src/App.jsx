@@ -1,20 +1,19 @@
+import { Routes, Route } from "react-router-dom";
+
 import Navbar from "./components/Navbar/Navbar";
 import Footer from "./components/Footer/Footer";
+
+import Home from "./pages/Home/Home";
 
 const App = () => {
   return (
     <>
       <Navbar />
 
-      <main
-        style={{
-          minHeight: "70vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <h1>Lawlite</h1>
+      <main>
+        <Routes>
+          <Route path="/" element={<Home />} />
+        </Routes>
       </main>
 
       <Footer />

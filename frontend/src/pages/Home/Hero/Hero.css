@@ -1,0 +1,714 @@
+.hero {
+  position: relative;
+  overflow: hidden;
+}
+/* =========================================
+   AMBIENT HERO BACKGROUND
+========================================= */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.hero-background {
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+  z-index: -1;
+
+  overflow: hidden;
+}
+
+/* Soft ambient glows */
+
+.ambient-glow {
+  position: absolute;
+
+  border-radius: 50%;
+
+  background: var(--gold);
+
+  filter: blur(90px);
+
+  opacity: 0.08;
+
+  animation: ambientFloat 12s ease-in-out infinite;
+}
+
+.glow-one {
+  width: 420px;
+  height: 420px;
+
+  top: -180px;
+  left: -100px;
+
+  animation-delay: 0s;
+}
+
+.glow-two {
+  width: 500px;
+  height: 500px;
+
+  top: 20%;
+  right: -250px;
+
+  opacity: 0.055;
+
+  animation-delay: -4s;
+}
+
+.glow-three {
+  width: 300px;
+  height: 300px;
+
+  bottom: -150px;
+  left: 38%;
+
+  opacity: 0.045;
+
+  animation-delay: -8s;
+}
+
+@keyframes ambientFloat {
+
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(25px, -30px, 0) scale(1.08);
+  }
+}
+
+/* =========================================
+   PARTICLES
+========================================= */
+
+.particle {
+  position: absolute;
+
+  width: 3px;
+  height: 3px;
+
+  border-radius: 50%;
+
+  background: var(--gold);
+
+  opacity: 0.35;
+
+  box-shadow:
+    0 0 8px var(--gold),
+    0 0 16px color-mix(in srgb, var(--gold) 35%, transparent);
+
+  animation: particleFloat 8s ease-in-out infinite;
+}
+
+.particle-one {
+  top: 18%;
+  left: 8%;
+  animation-delay: -1s;
+}
+
+.particle-two {
+  top: 31%;
+  left: 22%;
+  width: 2px;
+  height: 2px;
+  animation-delay: -5s;
+}
+
+.particle-three {
+  top: 12%;
+  right: 26%;
+  animation-delay: -3s;
+}
+
+.particle-four {
+  top: 42%;
+  right: 8%;
+  width: 2px;
+  height: 2px;
+  animation-delay: -7s;
+}
+
+.particle-five {
+  bottom: 24%;
+  left: 14%;
+  animation-delay: -2s;
+}
+
+.particle-six {
+  bottom: 14%;
+  right: 18%;
+  width: 2px;
+  height: 2px;
+  animation-delay: -6s;
+}
+
+.particle-seven {
+  top: 67%;
+  left: 42%;
+  animation-delay: -4s;
+}
+
+.particle-eight {
+  top: 24%;
+  right: 42%;
+  width: 2px;
+  height: 2px;
+  animation-delay: -1.5s;
+}
+
+.particle-nine {
+  bottom: 34%;
+  right: 5%;
+  animation-delay: -3.5s;
+}
+
+.particle-ten {
+  top: 9%;
+  left: 48%;
+  width: 2px;
+  height: 2px;
+  animation-delay: -5.5s;
+}
+
+.particle-eleven {
+  bottom: 10%;
+  left: 32%;
+  animation-delay: -7.5s;
+}
+
+.particle-twelve {
+  top: 54%;
+  left: 5%;
+  width: 2px;
+  height: 2px;
+  animation-delay: -2.5s;
+}
+
+@keyframes particleFloat {
+
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.2;
+  }
+
+  50% {
+    transform: translate3d(0, -18px, 0);
+    opacity: 0.55;
+  }
+}
+
+/* =========================================
+   SUBTLE GRID
+========================================= */
+
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+
+  opacity: 0.25;
+
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--gold) 5%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--gold) 5%, transparent) 1px,
+      transparent 1px
+    );
+
+  background-size: 70px 70px;
+
+  mask-image: radial-gradient(
+    ellipse at center,
+    black 0%,
+    transparent 70%
+  );
+
+  -webkit-mask-image: radial-gradient(
+    ellipse at center,
+    black 0%,
+    transparent 70%
+  );
+}
+.hero-container {
+  max-width: 1240px;
+  min-height: calc(100vh - var(--navbar-height));
+
+  margin: 0 auto;
+  padding: 80px 28px;
+
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  align-items: center;
+  gap: 70px;
+}
+
+/* Content */
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 7px 12px;
+
+  border: 1px solid var(--border-color);
+  border-radius: 100px;
+
+  background: var(--surface-color);
+
+  color: var(--gold);
+
+  font-size: 12px;
+  font-weight: 600;
+
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.hero-content h1 {
+  margin-top: 25px;
+
+  font-family: Georgia, "Times New Roman", serif;
+
+  font-size: clamp(48px, 5.2vw, 72px);
+  line-height: 1.04;
+  letter-spacing: -3px;
+
+  font-weight: 600;
+}
+
+.hero-content h1 span {
+  color: var(--gold);
+}
+
+.hero-description {
+  max-width: 580px;
+
+  margin-top: 27px;
+
+  color: var(--text-secondary);
+
+  font-size: 17px;
+  line-height: 1.75;
+}
+
+/* Buttons */
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+
+  margin-top: 34px;
+}
+
+.hero-primary-button,
+.hero-secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+
+  min-height: 48px;
+  padding: 0 19px;
+
+  border-radius: 7px;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  transition: all 0.25s ease;
+}
+
+.hero-primary-button {
+  background: var(--gold);
+  color: #111;
+}
+
+.hero-primary-button:hover {
+  background: var(--gold-light);
+  transform: translateY(-2px);
+}
+
+.hero-secondary-button {
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  background: var(--surface-color);
+}
+
+.hero-secondary-button:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* Trust */
+
+.hero-trust {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin-top: 28px;
+}
+
+.hero-trust-icon {
+  width: 29px;
+  height: 29px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: color-mix(in srgb, var(--gold) 12%, transparent);
+  color: var(--gold);
+}
+
+.hero-trust div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hero-trust span {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.hero-trust small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* Visual */
+
+.hero-visual {
+  position: relative;
+
+  min-height: 480px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.legal-card {
+  position: relative;
+  z-index: 2;
+
+  width: min(100%, 460px);
+
+  padding: 25px;
+
+  border: 1px solid var(--border-color);
+  border-radius: 15px;
+  
+
+  background: var(--surface-color);
+
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.08),
+    0 8px 25px rgba(0, 0, 0, 0.04);
+
+  transform: rotate(1.5deg);
+
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease;
+}
+.legal-card {
+  animation: cardFloat 7s ease-in-out infinite;
+}
+
+@keyframes cardFloat {
+  0%,
+  100% {
+    transform: rotate(1.5deg) translateY(0);
+  }
+
+  50% {
+    transform: rotate(0deg) translateY(-9px);
+  }
+}
+[data-theme="dark"] .hero-background {
+  opacity: 1;
+}
+
+[data-theme="dark"] .grid-overlay {
+  opacity: 0.4;
+}
+
+[data-theme="dark"] .particle {
+  opacity: 0.5;
+}
+[data-theme="dark"] .legal-card {
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.45),
+    0 8px 25px rgba(0, 0, 0, 0.25);
+}
+
+.legal-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.document-label {
+  color: var(--gold);
+
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.legal-card-header h3 {
+  margin-top: 7px;
+
+  font-family: Georgia, "Times New Roman", serif;
+
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.document-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 6px 9px;
+
+  border-radius: 100px;
+
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+
+  color: var(--gold);
+
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.document-status span {
+  width: 5px;
+  height: 5px;
+
+  border-radius: 50%;
+
+  background: var(--gold);
+}
+
+/* Fake document */
+
+.legal-text {
+  margin-top: 27px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.text-line {
+  height: 7px;
+
+  border-radius: 20px;
+
+  background: var(--border-color);
+}
+
+.text-line.long {
+  width: 100%;
+}
+
+.text-line.medium {
+  width: 75%;
+}
+
+.text-line.short {
+  width: 48%;
+}
+
+.legal-divider {
+  height: 1px;
+
+  margin: 25px 0;
+
+  background: var(--border-color);
+}
+
+/* Explanation */
+
+.lawlite-explanation {
+  padding: 17px;
+
+  border-radius: 10px;
+
+  background: color-mix(in srgb, var(--gold) 7%, var(--surface-color));
+
+  border: 1px solid
+    color-mix(in srgb, var(--gold) 20%, var(--border-color));
+}
+
+.explanation-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  color: var(--gold);
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.explanation-icon {
+  width: 24px;
+  height: 24px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 6px;
+
+  background: var(--gold);
+  color: #111;
+
+  font-family: Georgia, serif;
+  font-weight: 700;
+}
+
+.lawlite-explanation p {
+  margin-top: 11px;
+
+  color: var(--text-secondary);
+
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+/* Footer */
+
+.legal-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  margin-top: 20px;
+
+  color: var(--text-muted);
+
+  font-size: 10px;
+}
+
+.legal-card-footer strong {
+  color: var(--gold);
+}
+
+/* Background glow */
+
+.hero-glow {
+  position: absolute;
+
+  width: 400px;
+  height: 400px;
+
+  border-radius: 50%;
+
+  background: var(--gold);
+
+  opacity: 0.06;
+
+  filter: blur(70px);
+}
+@media (max-width: 900px) {
+  .hero-container {
+    grid-template-columns: 1fr;
+    gap: 50px;
+    padding-top: 65px;
+    padding-bottom: 70px;
+  }
+
+  .hero-content {
+    text-align: center;
+  }
+
+  .hero-badge {
+    margin: 0 auto;
+  }
+
+  .hero-description {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-actions {
+    justify-content: center;
+  }
+
+  .hero-trust {
+    justify-content: center;
+  }
+
+  .hero-visual {
+    min-height: 400px;
+  }
+}
+
+@media (max-width: 520px) {
+  .hero-container {
+    padding: 50px 18px 60px;
+  }
+
+  .hero-content h1 {
+    font-size: 45px;
+    letter-spacing: -2px;
+  }
+
+  .hero-description {
+    font-size: 15px;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .hero-primary-button,
+  .hero-secondary-button {
+    width: 100%;
+  }
+
+  .hero-visual {
+    min-height: 350px;
+  }
+
+  .legal-card {
+    padding: 19px;
+  }
+
+  .legal-card-header h3 {
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .particle,
+  .ambient-glow,
+  .legal-card {
+    animation: none;
+  }
+}

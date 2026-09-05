@@ -1,6 +1,11 @@
+/* ========================================
+   NAVBAR
+======================================== */
+
 .navbar {
   height: var(--navbar-height);
   width: 100%;
+
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -21,9 +26,15 @@
     border-color var(--transition);
 }
 
+
+/* ========================================
+   NAVBAR CONTAINER
+======================================== */
+
 .navbar-container {
   max-width: 1240px;
   height: 100%;
+
   margin: 0 auto;
   padding: 0 28px;
 
@@ -32,12 +43,33 @@
   justify-content: space-between;
 }
 
-/* Logo */
+
+/* ========================================
+   LOGO
+======================================== */
 
 .navbar-logo {
   display: flex;
   align-items: center;
   gap: 10px;
+
+  /* IMPORTANT:
+     Reset default button styling */
+  padding: 0;
+  margin: 0;
+
+  background: transparent;
+  border: none;
+
+  color: var(--text-primary);
+
+  cursor: pointer;
+
+  transition: opacity var(--transition);
+}
+
+.navbar-logo:hover {
+  opacity: 0.88;
 }
 
 .logo-mark {
@@ -55,44 +87,233 @@
 
   font-size: 20px;
   font-weight: 700;
+
   font-family: Georgia, serif;
+
+  flex-shrink: 0;
 }
 
 .logo-text {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
   font-size: 23px;
   font-weight: 600;
+
   letter-spacing: -0.5px;
-}
 
-/* Navigation */
-
-.navbar-links {
-  display: flex;
-  align-items: center;
-  gap: 36px;
-  margin-left: 80px;
-}
-
-.navbar-links a {
-  color: var(--text-secondary);
-  font-size: 14px;
-  font-weight: 500;
+  color: var(--text-primary);
 
   transition: color var(--transition);
 }
 
-.navbar-links a:hover {
-  color: var(--gold);
+
+/* ========================================
+   DESKTOP NAVIGATION
+======================================== */
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+
+  gap: 36px;
+
+  margin-left: 80px;
 }
 
-/* Actions */
+
+/* Navigation Buttons */
+
+.nav-link {
+  position: relative;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  padding: 8px 0;
+
+  background: transparent;
+  border: none;
+
+  color: var(--text-secondary);
+
+  font-size: 14px;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  transition:
+    color 0.25s ease;
+}
+
+
+/* Gold underline */
+
+.nav-link::after {
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+  bottom: 1px;
+
+  width: 100%;
+  height: 2px;
+
+  background: var(--gold);
+
+  border-radius: 2px;
+
+  transform: scaleX(0);
+  transform-origin: center;
+
+  transition:
+    transform 0.25s ease;
+}
+
+
+/* Hover */
+
+.nav-link:hover {
+  color: var(--text-primary);
+}
+
+.nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+
+/* ========================================
+   MORE DROPDOWN
+======================================== */
+
+.nav-dropdown {
+  position: relative;
+}
+
+
+/* More arrow */
+
+.more-chevron {
+  transition:
+    transform 0.25s ease;
+}
+
+.more-chevron.rotate {
+  transform: rotate(180deg);
+}
+
+
+/* Dropdown */
+
+.more-dropdown {
+  position: absolute;
+
+  top: calc(100% + 14px);
+  right: -20px;
+
+  min-width: 220px;
+
+  padding: 8px;
+
+  background: var(--surface-color);
+
+  border: 1px solid var(--border-color);
+
+  border-radius: 12px;
+
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.12);
+
+  opacity: 0;
+  visibility: hidden;
+
+  transform: translateY(-8px);
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    visibility 0.2s ease;
+
+  z-index: 100;
+}
+
+
+/* Invisible bridge between More and dropdown
+   prevents the dropdown from disappearing
+   when moving the mouse down */
+
+.more-dropdown::before {
+  content: "";
+
+  position: absolute;
+
+  top: -15px;
+  left: 0;
+
+  width: 100%;
+  height: 15px;
+}
+
+
+.more-dropdown.show {
+  opacity: 1;
+  visibility: visible;
+
+  transform: translateY(0);
+}
+
+
+/* ========================================
+   DROPDOWN ITEMS
+======================================== */
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+
+  width: 100%;
+
+  padding: 11px 13px;
+
+  border-radius: 8px;
+
+  color: var(--text-secondary);
+
+  font-size: 14px;
+  font-weight: 500;
+
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background: var(--bg-color);
+
+  color: var(--text-primary);
+
+  transform: translateX(3px);
+}
+
+
+/* ========================================
+   DESKTOP ACTIONS
+======================================== */
 
 .navbar-actions {
   display: flex;
   align-items: center;
+
   gap: 12px;
 }
+
+
+/* Login */
 
 .login-button {
   padding: 10px 15px;
@@ -102,16 +323,21 @@
 
   color: var(--text-primary);
 
-  transition: color var(--transition);
+  transition:
+    color var(--transition);
 }
 
 .login-button:hover {
   color: var(--gold);
 }
 
+
+/* Get Started */
+
 .signup-button {
   display: flex;
   align-items: center;
+
   gap: 8px;
 
   padding: 11px 17px;
@@ -126,21 +352,34 @@
 
   transition:
     background-color var(--transition),
-    transform var(--transition);
+    transform var(--transition),
+    box-shadow var(--transition);
 }
 
 .signup-button:hover {
   background: var(--gold-light);
+
   transform: translateY(-1px);
+
+  box-shadow:
+    0 6px 18px rgba(201, 162, 39, 0.18);
 }
 
-/* Mobile */
+
+/* ========================================
+   MOBILE ACTIONS
+======================================== */
 
 .mobile-actions {
   display: none;
+
   align-items: center;
+
   gap: 10px;
 }
+
+
+/* Menu Button */
 
 .menu-button {
   width: 40px;
@@ -151,16 +390,329 @@
   justify-content: center;
 
   border: 1px solid var(--border-color);
+
   border-radius: 50%;
 
   background: var(--surface-color);
   color: var(--text-primary);
 
   cursor: pointer;
+
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition);
 }
 
-/* Mobile Menu */
+.menu-button:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+
+/* ========================================
+   MOBILE MENU
+======================================== */
 
 .mobile-menu {
   display: none;
+}
+
+
+/* Mobile nav links */
+
+.mobile-nav-link {
+  position: relative;
+
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 14px 0;
+
+  background: transparent;
+  border: none;
+
+  color: var(--text-primary);
+
+  font-size: 15px;
+  font-weight: 500;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+
+/* ========================================
+   MOBILE MORE
+======================================== */
+
+.mobile-more-button {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  background: transparent;
+
+  cursor: pointer;
+}
+
+
+/* Mobile submenu */
+
+.mobile-more-menu {
+  max-height: 0;
+
+  overflow: hidden;
+
+  opacity: 0;
+
+  padding-left: 16px;
+
+  transition:
+    max-height 0.3s ease,
+    opacity 0.25s ease;
+}
+
+.mobile-more-menu.open {
+  max-height: 250px;
+
+  opacity: 1;
+
+  padding-top: 4px;
+  padding-bottom: 6px;
+}
+
+
+/* Mobile submenu links */
+
+.mobile-more-menu a {
+  display: block;
+
+  padding: 10px 0;
+
+  color: var(--text-secondary);
+
+  font-size: 14px;
+
+  transition:
+    color 0.2s ease,
+    padding-left 0.2s ease;
+}
+
+.mobile-more-menu a:hover {
+  color: var(--gold);
+
+  padding-left: 5px;
+}
+
+
+/* ========================================
+   MOBILE DIVIDER
+======================================== */
+
+.mobile-menu-divider {
+  width: 100%;
+  height: 1px;
+
+  margin: 10px 0;
+
+  background: var(--border-color);
+}
+
+
+/* ========================================
+   MOBILE LOGIN
+======================================== */
+
+.mobile-login {
+  display: block;
+
+  padding: 13px 0;
+
+  color: var(--text-primary);
+
+  font-size: 15px;
+  font-weight: 500;
+
+  transition:
+    color var(--transition);
+}
+
+.mobile-login:hover {
+  color: var(--gold);
+}
+
+
+/* ========================================
+   MOBILE SIGNUP
+======================================== */
+
+.mobile-signup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  margin-top: 6px;
+
+  padding: 12px 16px;
+
+  background: var(--gold);
+  color: #111;
+
+  border-radius: 8px;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  transition:
+    background-color var(--transition),
+    transform var(--transition);
+}
+
+.mobile-signup:hover {
+  background: var(--gold-light);
+
+  transform: translateY(-1px);
+}
+
+
+/* ========================================
+   RESPONSIVE
+======================================== */
+
+@media (max-width: 900px) {
+
+  .navbar-container {
+    padding: 0 22px;
+  }
+
+  .navbar-links {
+    gap: 24px;
+    margin-left: 20px;
+  }
+
+  .navbar-actions {
+    gap: 8px;
+  }
+
+}
+
+
+@media (max-width: 768px) {
+
+  .navbar-container {
+    padding: 0 20px;
+  }
+
+
+  /* Hide desktop navigation */
+
+  .navbar-links,
+  .navbar-actions {
+    display: none;
+  }
+
+
+  /* Show mobile actions */
+
+  .mobile-actions {
+    display: flex;
+  }
+
+
+  /* Mobile menu */
+
+  .mobile-menu {
+    display: block;
+
+    position: absolute;
+
+    top: var(--navbar-height);
+    left: 0;
+
+    width: 100%;
+
+    background: var(--surface-color);
+
+    border-bottom: 1px solid var(--border-color);
+
+    padding: 0 20px;
+
+    max-height: 0;
+
+    overflow: hidden;
+
+    opacity: 0;
+
+    transform: translateY(-8px);
+
+    transition:
+      max-height 0.3s ease,
+      opacity 0.25s ease,
+      transform 0.25s ease;
+  }
+
+
+  .mobile-menu.open {
+    max-height: 600px;
+
+    opacity: 1;
+
+    transform: translateY(0);
+
+    padding-top: 12px;
+    padding-bottom: 20px;
+  }
+
+
+  .navbar-logo {
+    gap: 9px;
+  }
+
+
+  .logo-mark {
+    width: 34px;
+    height: 34px;
+
+    font-size: 19px;
+  }
+
+
+  .logo-text {
+    font-size: 21px;
+  }
+
+}
+
+
+@media (max-width: 420px) {
+
+  .navbar-container {
+    padding: 0 16px;
+  }
+
+
+  .logo-text {
+    font-size: 20px;
+  }
+
+
+  .mobile-actions {
+    gap: 7px;
+  }
+
+
+  .menu-button {
+    width: 38px;
+    height: 38px;
+  }
+
 }

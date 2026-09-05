@@ -9,7 +9,7 @@ import "./WhyLawlite.css";
 
 const WhyLawlite = () => {
   return (
-    <section className="why-lawlite">
+    <section id="why-lawlite" className="why-lawlite">
 
       <div className="why-lawlite-container">
 
@@ -33,6 +33,7 @@ const WhyLawlite = () => {
             </h2>
 
             <div className="why-heading-side">
+
               <p>
                 Legal documents are precise by design.
                 But precision doesn't always mean
@@ -43,6 +44,7 @@ const WhyLawlite = () => {
                 <ArrowDown size={15} />
                 <span>SCROLL TO UNDERSTAND</span>
               </div>
+
             </div>
 
           </div>

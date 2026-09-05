@@ -1,0 +1,166 @@
+.navbar {
+  height: var(--navbar-height);
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
+  background: color-mix(
+    in srgb,
+    var(--bg-color) 92%,
+    transparent
+  );
+
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  border-bottom: 1px solid var(--border-color);
+
+  transition:
+    background-color var(--transition),
+    border-color var(--transition);
+}
+
+.navbar-container {
+  max-width: 1240px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Logo */
+
+.navbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-mark {
+  width: 36px;
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: var(--gold);
+  color: #111;
+
+  border-radius: 9px;
+
+  font-size: 20px;
+  font-weight: 700;
+  font-family: Georgia, serif;
+}
+
+.logo-text {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+/* Navigation */
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+  margin-left: 80px;
+}
+
+.navbar-links a {
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+
+  transition: color var(--transition);
+}
+
+.navbar-links a:hover {
+  color: var(--gold);
+}
+
+/* Actions */
+
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.login-button {
+  padding: 10px 15px;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  color: var(--text-primary);
+
+  transition: color var(--transition);
+}
+
+.login-button:hover {
+  color: var(--gold);
+}
+
+.signup-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 11px 17px;
+
+  background: var(--gold);
+  color: #111;
+
+  border-radius: 7px;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  transition:
+    background-color var(--transition),
+    transform var(--transition);
+}
+
+.signup-button:hover {
+  background: var(--gold-light);
+  transform: translateY(-1px);
+}
+
+/* Mobile */
+
+.mobile-actions {
+  display: none;
+  align-items: center;
+  gap: 10px;
+}
+
+.menu-button {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+
+  background: var(--surface-color);
+  color: var(--text-primary);
+
+  cursor: pointer;
+}
+
+/* Mobile Menu */
+
+.mobile-menu {
+  display: none;
+}

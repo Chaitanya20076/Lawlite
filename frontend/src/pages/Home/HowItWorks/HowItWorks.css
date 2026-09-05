@@ -1,0 +1,545 @@
+/* =========================================
+   HOW IT WORKS
+========================================= */
+
+.how-it-works {
+  position: relative;
+  padding: 130px 0;
+  overflow: hidden;
+
+  background: var(--surface-color);
+
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.how-it-works-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+/* =========================================
+   SECTION HEADER
+========================================= */
+
+.section-heading {
+  max-width: 680px;
+  margin-bottom: 75px;
+}
+
+.section-eyebrow {
+  display: inline-flex;
+  align-items: center;
+
+  color: var(--gold);
+
+  font-size: 11px;
+  font-weight: 700;
+
+  letter-spacing: 1.8px;
+}
+
+.section-heading h2 {
+  margin-top: 17px;
+
+  font-family: Georgia, "Times New Roman", serif;
+
+  font-size: clamp(40px, 4.5vw, 58px);
+  line-height: 1.08;
+
+  letter-spacing: -2px;
+
+  font-weight: 600;
+}
+
+.section-heading h2 span {
+  color: var(--gold);
+}
+
+.section-heading p {
+  max-width: 590px;
+
+  margin-top: 20px;
+
+  color: var(--text-secondary);
+
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+/* =========================================
+   PROCESS
+========================================= */
+
+.process {
+  display: grid;
+
+  grid-template-columns:
+    1fr 55px
+    1fr 55px
+    1fr;
+
+  align-items: center;
+
+  gap: 0;
+}
+
+/* =========================================
+   STEP
+========================================= */
+
+.process-step {
+  position: relative;
+}
+
+.step-number {
+  margin-bottom: 13px;
+
+  color: var(--text-muted);
+
+  font-family: Georgia, "Times New Roman", serif;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  letter-spacing: 1px;
+}
+
+.step-card {
+  min-height: 430px;
+
+  padding: 27px;
+
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+
+  background: var(--bg-color);
+
+  transition:
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.step-card:hover {
+  border-color: color-mix(
+    in srgb,
+    var(--gold) 45%,
+    var(--border-color)
+  );
+
+  transform: translateY(-5px);
+
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .step-card:hover {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+/* =========================================
+   ICON
+========================================= */
+
+.step-icon {
+  width: 45px;
+  height: 45px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background: color-mix(
+    in srgb,
+    var(--gold) 10%,
+    transparent
+  );
+
+  color: var(--gold);
+}
+
+.step-label {
+  display: block;
+
+  margin-top: 28px;
+
+  color: var(--gold);
+
+  font-size: 9px;
+  font-weight: 700;
+
+  letter-spacing: 1.5px;
+}
+
+.step-card h3 {
+  margin-top: 9px;
+
+  font-family: Georgia, "Times New Roman", serif;
+
+  font-size: 23px;
+  line-height: 1.25;
+
+  font-weight: 600;
+}
+
+.step-card > p {
+  margin-top: 13px;
+
+  color: var(--text-secondary);
+
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* =========================================
+   DOCUMENT PREVIEW
+========================================= */
+
+.document-preview {
+  margin-top: 28px;
+
+  padding: 17px;
+
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+
+  background: var(--surface-color);
+}
+
+.preview-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  color: var(--text-muted);
+
+  font-size: 8px;
+  font-weight: 700;
+
+  letter-spacing: 1px;
+}
+
+.preview-top span:last-child {
+  color: var(--gold);
+}
+
+.preview-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  margin-top: 16px;
+}
+
+.preview-lines span {
+  height: 5px;
+
+  border-radius: 10px;
+
+  background: var(--border-color);
+}
+
+.preview-lines span:nth-child(1) {
+  width: 100%;
+}
+
+.preview-lines span:nth-child(2) {
+  width: 82%;
+}
+
+.preview-lines span:nth-child(3) {
+  width: 94%;
+}
+
+.preview-lines span:nth-child(4) {
+  width: 65%;
+}
+
+.preview-lines span:nth-child(5) {
+  width: 88%;
+}
+
+/* =========================================
+   AI ANALYSIS
+========================================= */
+
+.analysis-preview {
+  margin-top: 28px;
+
+  padding: 17px;
+
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+
+  background: var(--surface-color);
+}
+
+.analysis-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  color: var(--text-secondary);
+
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.analysis-dot {
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+
+  background: var(--gold);
+
+  box-shadow: 0 0 10px
+    color-mix(in srgb, var(--gold) 60%, transparent);
+
+  animation: analysisPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes analysisPulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.analysis-bar {
+  height: 5px;
+
+  margin-top: 17px;
+
+  overflow: hidden;
+
+  border-radius: 10px;
+
+  background: var(--border-color);
+}
+
+.analysis-bar span {
+  display: block;
+
+  width: 65%;
+  height: 100%;
+
+  border-radius: inherit;
+
+  background: var(--gold);
+
+  animation: analysisProgress 3s ease-in-out infinite;
+}
+
+@keyframes analysisProgress {
+  0% {
+    width: 20%;
+  }
+
+  50% {
+    width: 82%;
+  }
+
+  100% {
+    width: 55%;
+  }
+}
+
+.analysis-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  margin-top: 16px;
+}
+
+.analysis-tags span {
+  padding: 6px 8px;
+
+  border-radius: 5px;
+
+  background: color-mix(
+    in srgb,
+    var(--gold) 7%,
+    transparent
+  );
+
+  color: var(--text-muted);
+
+  font-size: 9px;
+}
+
+/* =========================================
+   EXPLANATION PREVIEW
+========================================= */
+
+.explanation-preview {
+  margin-top: 28px;
+
+  padding: 17px;
+
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--gold) 20%,
+      var(--border-color)
+    );
+
+  border-radius: 9px;
+
+  background: color-mix(
+    in srgb,
+    var(--gold) 5%,
+    var(--surface-color)
+  );
+}
+
+.explanation-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  color: var(--gold);
+
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.mini-logo {
+  width: 22px;
+  height: 22px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 5px;
+
+  background: var(--gold);
+  color: #111;
+
+  font-family: Georgia, serif;
+
+  font-weight: 700;
+}
+
+.explanation-preview p {
+  margin-top: 13px;
+
+  color: var(--text-secondary);
+
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.explanation-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  margin-top: 15px;
+
+  color: var(--gold);
+
+  font-size: 9px;
+  font-weight: 600;
+}
+
+/* =========================================
+   CONNECTOR
+========================================= */
+
+.process-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: var(--gold);
+}
+
+.connector-line {
+  width: 100%;
+  height: 1px;
+
+  background: color-mix(
+    in srgb,
+    var(--gold) 35%,
+    var(--border-color)
+  );
+}
+
+.process-connector svg {
+  flex-shrink: 0;
+  margin-left: -1px;
+
+  padding: 2px;
+
+  background: var(--surface-color);
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 950px) {
+
+  .how-it-works {
+    padding: 100px 0;
+  }
+
+  .process {
+    grid-template-columns: 1fr;
+    gap: 25px;
+  }
+
+  .process-connector {
+    height: 30px;
+
+    transform: rotate(90deg);
+  }
+
+  .step-card {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 520px) {
+
+  .how-it-works {
+    padding: 80px 0;
+  }
+
+  .how-it-works-container {
+    padding: 0 18px;
+  }
+
+  .section-heading {
+    margin-bottom: 50px;
+  }
+
+  .section-heading h2 {
+    font-size: 39px;
+    letter-spacing: -1.5px;
+  }
+
+  .section-heading p {
+    font-size: 14px;
+  }
+
+  .step-card {
+    padding: 21px;
+  }
+
+  .step-card h3 {
+    font-size: 21px;
+  }
+}

@@ -774,8 +774,8 @@ const Privacy = () => {
                       PRIVACY ENQUIRIES
                     </span>
 
-                    <a href="mailto:hello@lawlite.ai">
-                      hello@lawlite.ai
+                    <a href="mailto:chaitanya222007@gmail.com">
+                      chaitanya222007@gmail.com
                     </a>
 
                   </div>

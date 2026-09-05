@@ -4,7 +4,6 @@ import {
   X,
   ArrowRight,
   ChevronDown,
-  Phone,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
@@ -27,7 +26,7 @@ const Navbar = () => {
   const scrollToSection = (sectionId) => {
     closeMenu();
 
-    // If already on homepage, scroll directly
+    // Already on homepage
     if (location.pathname === "/") {
       const section = document.getElementById(sectionId);
 
@@ -74,21 +73,31 @@ const Navbar = () => {
 
   return (
     <header className="navbar">
+
       <div className="navbar-container">
 
-        {/* Logo */}
+        {/* ========================================
+            LOGO
+        ======================================== */}
 
         <button
           className="navbar-logo"
           onClick={scrollToTop}
           aria-label="Go to Lawlite homepage"
         >
-          <span className="logo-mark">L</span>
-          <span className="logo-text">Lawlite</span>
+          <span className="logo-mark">
+            L
+          </span>
+
+          <span className="logo-text">
+            Lawlite
+          </span>
         </button>
 
 
-        {/* Desktop Navigation */}
+        {/* ========================================
+            DESKTOP NAVIGATION
+        ======================================== */}
 
         <nav className="navbar-links">
 
@@ -106,7 +115,9 @@ const Navbar = () => {
 
           <button
             className="nav-link"
-            onClick={() => scrollToSection("why-lawlite")}
+            onClick={() =>
+              scrollToSection("why-lawlite")
+            }
           >
             About
           </button>
@@ -116,26 +127,39 @@ const Navbar = () => {
 
           <button
             className="nav-link"
-            onClick={() => scrollToSection("how-it-works")}
+            onClick={() =>
+              scrollToSection("how-it-works")
+            }
           >
             How It Works
           </button>
 
 
-          {/* More Dropdown */}
+          {/* ========================================
+              MORE DROPDOWN
+          ======================================== */}
 
           <div
             className="nav-dropdown"
-            onMouseEnter={() => setMoreOpen(true)}
-            onMouseLeave={() => setMoreOpen(false)}
+            onMouseEnter={() =>
+              setMoreOpen(true)
+            }
+            onMouseLeave={() =>
+              setMoreOpen(false)
+            }
           >
 
             <button
               className="nav-link more-button"
-              onClick={() => setMoreOpen((prev) => !prev)}
+              onClick={() =>
+                setMoreOpen((prev) => !prev)
+              }
               aria-expanded={moreOpen}
             >
-              More
+              <span>
+                More
+              </span>
+
               <ChevronDown
                 size={15}
                 className={`more-chevron ${
@@ -145,11 +169,15 @@ const Navbar = () => {
             </button>
 
 
+            {/* Dropdown */}
+
             <div
               className={`more-dropdown ${
                 moreOpen ? "show" : ""
               }`}
             >
+
+              {/* Terms */}
 
               <Link
                 to="/terms"
@@ -162,6 +190,8 @@ const Navbar = () => {
               </Link>
 
 
+              {/* Privacy */}
+
               <Link
                 to="/privacy"
                 onClick={closeMenu}
@@ -173,16 +203,20 @@ const Navbar = () => {
               </Link>
 
 
-              <a
-                href="tel:+910000000000"
+              {/* Contact */}
+
+              <Link
+                to="/contact"
                 onClick={closeMenu}
                 className="dropdown-item"
               >
                 <span>
-                  Contact Number
+                  Contact
                 </span>
-              </a>
+              </Link>
 
+
+              {/* Partners */}
 
               <Link
                 to="/partners"
@@ -201,11 +235,15 @@ const Navbar = () => {
         </nav>
 
 
-        {/* Desktop Actions */}
+        {/* ========================================
+            DESKTOP ACTIONS
+        ======================================== */}
 
         <div className="navbar-actions">
 
           <ThemeToggle />
+
+          {/* Login */}
 
           <Link
             to="/login"
@@ -214,18 +252,26 @@ const Navbar = () => {
             Login
           </Link>
 
+
+          {/* Get Started */}
+
           <Link
             to="/signup"
             className="signup-button"
           >
-            Get Started
+            <span>
+              Get Started
+            </span>
+
             <ArrowRight size={16} />
           </Link>
 
         </div>
 
 
-        {/* Mobile Actions */}
+        {/* ========================================
+            MOBILE ACTIONS
+        ======================================== */}
 
         <div className="mobile-actions">
 
@@ -251,7 +297,9 @@ const Navbar = () => {
       </div>
 
 
-      {/* Mobile Menu */}
+      {/* ========================================
+          MOBILE MENU
+      ======================================== */}
 
       <div
         className={`mobile-menu ${
@@ -295,7 +343,9 @@ const Navbar = () => {
           </button>
 
 
-          {/* Mobile More */}
+          {/* ========================================
+              MOBILE MORE
+          ======================================== */}
 
           <button
             className="mobile-nav-link mobile-more-button"
@@ -304,7 +354,9 @@ const Navbar = () => {
             }
             aria-expanded={moreOpen}
           >
-            <span>More</span>
+            <span>
+              More
+            </span>
 
             <ChevronDown
               size={17}
@@ -323,12 +375,17 @@ const Navbar = () => {
             }`}
           >
 
+            {/* Terms */}
+
             <Link
               to="/terms"
               onClick={closeMenu}
             >
               Terms & Conditions
             </Link>
+
+
+            {/* Privacy */}
 
             <Link
               to="/privacy"
@@ -337,12 +394,18 @@ const Navbar = () => {
               Privacy Policy
             </Link>
 
-            <a
-              href="tel:+910000000000"
+
+            {/* Contact */}
+
+            <Link
+              to="/contact"
               onClick={closeMenu}
             >
-              Contact Number
-            </a>
+              Contact
+            </Link>
+
+
+            {/* Partners */}
 
             <Link
               to="/partners"
@@ -353,6 +416,8 @@ const Navbar = () => {
 
           </div>
 
+
+          {/* Divider */}
 
           <div className="mobile-menu-divider" />
 
@@ -375,7 +440,10 @@ const Navbar = () => {
             onClick={closeMenu}
             className="mobile-signup"
           >
-            Get Started
+            <span>
+              Get Started
+            </span>
+
             <ArrowRight size={16} />
           </Link>
 

@@ -1,45 +1,285 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
+  Check,
   Eye,
   EyeOff,
+  FileText,
   LockKeyhole,
   Mail,
+  Scale,
   ShieldCheck,
   Sparkles,
-  Scale,
-  FileText,
 } from "lucide-react";
+
+import {
+  browserLocalPersistence,
+  browserSessionPersistence,
+  GoogleAuthProvider,
+  sendPasswordResetEmail,
+  setPersistence,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+} from "firebase/auth";
+
+import { auth } from "../../config/firebase";
 
 import "./Login.css";
 
 const Login = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [showPassword, setShowPassword] = useState(false);
 
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const [rememberMe, setRememberMe] = useState(true);
+
   const [formData, setFormData] = useState({
-    email: "",
+    email: location.state?.email || "",
     password: "",
-    remember: false,
   });
 
+  /* ========================================
+     SHOW SIGNUP SUCCESS MESSAGE
+  ======================================== */
+
+  useEffect(() => {
+    if (location.state?.signupSuccess) {
+      setSuccess(
+        "Your account has been created successfully. You can sign in now."
+      );
+
+      navigate("/login", {
+        replace: true,
+        state: {
+          email: location.state?.email || "",
+        },
+      });
+    }
+  }, [location.state, navigate]);
+
+  /* ========================================
+     INPUT CHANGE
+  ======================================== */
+
   const handleChange = (event) => {
-    const { name, value, type, checked } = event.target;
+    const { name, value } = event.target;
 
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: value,
     }));
+
+    setError("");
+    setSuccess("");
   };
 
-  const handleSubmit = (event) => {
+  /* ========================================
+     FIREBASE ERROR HANDLER
+  ======================================== */
+
+  const getFirebaseErrorMessage = (firebaseError) => {
+    switch (firebaseError.code) {
+      case "auth/invalid-credential":
+      case "auth/wrong-password":
+      case "auth/user-not-found":
+        return "Incorrect email or password.";
+
+      case "auth/invalid-email":
+        return "Please enter a valid email address.";
+
+      case "auth/user-disabled":
+        return "This account has been disabled.";
+
+      case "auth/too-many-requests":
+        return "Too many unsuccessful attempts. Please try again later.";
+
+      case "auth/network-request-failed":
+        return "Network error. Please check your internet connection.";
+
+      case "auth/popup-closed-by-user":
+        return "Google sign-in was cancelled.";
+
+      case "auth/popup-blocked":
+        return "Your browser blocked the Google sign-in popup.";
+
+      case "auth/account-exists-with-different-credential":
+        return "An account already exists with this email using another sign-in method.";
+
+      case "auth/api-key-not-valid":
+        return "Firebase configuration is invalid. Please check your Firebase web configuration.";
+
+      case "auth/operation-not-allowed":
+        return "This sign-in method is not enabled in Firebase.";
+
+      default:
+        return (
+          firebaseError.message ||
+          "Something went wrong. Please try again."
+        );
+    }
+  };
+
+  /* ========================================
+     EMAIL / PASSWORD LOGIN
+  ======================================== */
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    // Authentication will be connected later.
-    console.log("Login submitted:", formData);
+    setError("");
+    setSuccess("");
+
+    const email = formData.email.trim();
+
+    if (!email) {
+      setError("Please enter your email address.");
+      return;
+    }
+
+    if (!formData.password) {
+      setError("Please enter your password.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      await setPersistence(
+        auth,
+        rememberMe
+          ? browserLocalPersistence
+          : browserSessionPersistence
+      );
+
+      const result = await signInWithEmailAndPassword(
+        auth,
+        email,
+        formData.password
+      );
+
+      console.log("Email sign-in successful:", {
+        uid: result.user.uid,
+        name: result.user.displayName,
+        email: result.user.email,
+        emailVerified: result.user.emailVerified,
+      });
+
+      setSuccess("Signed in successfully. Welcome back to Lawlite!");
+
+      setTimeout(() => {
+        navigate("/");
+      }, 700);
+    } catch (firebaseError) {
+      console.error("Email sign-in error:", firebaseError);
+
+      setError(getFirebaseErrorMessage(firebaseError));
+    } finally {
+      setLoading(false);
+    }
   };
 
+  /* ========================================
+     GOOGLE LOGIN
+  ======================================== */
+
+  const handleGoogleLogin = async () => {
+    setError("");
+    setSuccess("");
+
+    try {
+      setGoogleLoading(true);
+
+      const provider = new GoogleAuthProvider();
+
+      provider.setCustomParameters({
+        prompt: "select_account",
+      });
+
+      await setPersistence(
+        auth,
+        rememberMe
+          ? browserLocalPersistence
+          : browserSessionPersistence
+      );
+
+      const result = await signInWithPopup(auth, provider);
+
+      console.log("Google sign-in successful:", {
+        uid: result.user.uid,
+        name: result.user.displayName,
+        email: result.user.email,
+        emailVerified: result.user.emailVerified,
+      });
+
+      setSuccess(
+        `Welcome back${
+          result.user.displayName
+            ? `, ${result.user.displayName}`
+            : ""
+        }!`
+      );
+
+      setTimeout(() => {
+        navigate("/");
+      }, 700);
+    } catch (firebaseError) {
+      console.error("Google sign-in error:", firebaseError);
+
+      setError(getFirebaseErrorMessage(firebaseError));
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  /* ========================================
+     FORGOT PASSWORD
+  ======================================== */
+
+  const handleForgotPassword = async () => {
+    setError("");
+    setSuccess("");
+
+    const email = formData.email.trim();
+
+    if (!email) {
+      setError(
+        "Enter your email address first, then click Forgot password."
+      );
+      return;
+    }
+
+    try {
+      setResetLoading(true);
+
+      await sendPasswordResetEmail(auth, email);
+
+      setSuccess(
+        "Password reset instructions have been sent to your email."
+      );
+    } catch (firebaseError) {
+      console.error("Password reset error:", firebaseError);
+
+      setError(getFirebaseErrorMessage(firebaseError));
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  /* ========================================
+     RENDER
+  ======================================== */
+
   return (
-    <div className="login-page">
+    <main className="login-page">
 
       {/* ========================================
           LEFT VISUAL PANEL
@@ -47,18 +287,12 @@ const Login = () => {
 
       <section className="login-visual">
 
-        {/* Background */}
-
         <div className="login-grid" />
 
         <div className="login-glow login-glow-one" />
         <div className="login-glow login-glow-two" />
 
-
-        {/* Floating particles */}
-
-        <div className="login-particles">
-
+        <div className="login-particles" aria-hidden="true">
           <span />
           <span />
           <span />
@@ -67,43 +301,28 @@ const Login = () => {
           <span />
           <span />
           <span />
-
         </div>
 
-
-        {/* Brand */}
+        {/* BRAND */}
 
         <div className="login-brand">
-
           <div className="login-brand-mark">
-            L
+            <Scale size={21} strokeWidth={2.1} />
           </div>
 
-          <span>
-            Lawlite
-          </span>
-
+          <span>LAWLITE</span>
         </div>
 
-
-        {/* Main Visual */}
+        {/* VISUAL CONTENT */}
 
         <div className="login-visual-content">
 
           <div className="visual-eyebrow">
-
             <Sparkles size={14} />
-
-            <span>
-              AI-POWERED LEGAL UNDERSTANDING
-            </span>
-
+            <span>LEGAL CLARITY, SIMPLIFIED</span>
           </div>
 
-
-          {/* ========================================
-              ANIMATED HEADING
-          ======================================== */}
+          {/* ANIMATED HEADING */}
 
           <h1 className="login-animated-heading">
 
@@ -114,123 +333,94 @@ const Login = () => {
             <span className="heading-rotator">
 
               <span className="heading-phrase">
-                Let's make sense of the law.
+                Let&apos;s make sense of the law.
               </span>
 
               <span className="heading-phrase">
-                Let's decode the legal jargon.
+                Let&apos;s decode the legal jargon.
               </span>
 
               <span className="heading-phrase">
-                Let's simplify the fine print.
+                Let&apos;s simplify the fine print.
               </span>
 
               <span className="heading-phrase">
-                Let's understand what it means.
+                Let&apos;s understand what it means.
               </span>
 
             </span>
 
           </h1>
 
-
           <p>
-            Your legal documents, explanations and
-            understanding — all in one place.
+            Your legal documents can be complicated.
+            Understanding them doesn&apos;t have to be.
           </p>
 
-
-          {/* ========================================
-              LEGAL TRANSFORMATION VISUAL
-          ======================================== */}
+          {/* DOCUMENT → LAWLITE */}
 
           <div className="login-transform">
 
-            {/* Document */}
+            {/* DOCUMENT */}
 
             <div className="login-document">
 
               <div className="document-header">
-
-                <FileText size={14} />
-
-                <span>
-                  LEGAL NOTICE
-                </span>
-
+                <FileText size={15} />
+                <span>LEGAL DOCUMENT</span>
               </div>
 
-
               <div className="document-lines">
-
                 <span />
                 <span />
                 <span className="short" />
                 <span />
-                <span />
                 <span className="medium" />
-                <span />
-
+                <span className="short" />
               </div>
 
-
               <div className="document-stamp">
-                PURSUANT TO
+                COMPLEX
               </div>
 
             </div>
 
-
-            {/* Transformation Arrow */}
+            {/* ARROW */}
 
             <div className="transform-arrow">
 
               <div className="arrow-line" />
 
-              <Sparkles size={16} />
-
-              <div className="arrow-line" />
+              <ArrowRight size={18} />
 
             </div>
 
-
-            {/* Explanation */}
+            {/* EXPLANATION */}
 
             <div className="login-explanation">
 
               <div className="explanation-top">
 
                 <div className="explanation-logo">
-                  L
+                  <Scale size={13} />
                 </div>
 
-                <span>
-                  LAW LITE
-                </span>
+                <span>LAW LITE AI</span>
 
               </div>
 
-
               <h3>
-                In simple terms
+                Here&apos;s what it means.
               </h3>
 
-
               <p>
-                This section explains what
-                the notice actually means
-                for you.
+                Key information explained in
+                simple, everyday language.
               </p>
 
-
               <div className="explanation-status">
-
-                <ShieldCheck size={13} />
-
-                <span>
-                  Plain-language explanation
-                </span>
-
+                <Check size={12} />
+                <span>UNDERSTOOD</span>
               </div>
 
             </div>
@@ -239,23 +429,18 @@ const Login = () => {
 
         </div>
 
-
-        {/* ========================================
-            BOTTOM QUOTE
-        ======================================== */}
+        {/* VISUAL FOOTER */}
 
         <div className="login-visual-footer">
-
-          <Scale size={15} />
+          <ShieldCheck size={15} />
 
           <span>
-            Understand first. Then decide what comes next.
+            AI assistance · Privacy-conscious ·
+            Built for understanding
           </span>
-
         </div>
 
       </section>
-
 
       {/* ========================================
           RIGHT LOGIN PANEL
@@ -265,26 +450,19 @@ const Login = () => {
 
         <div className="login-form-wrapper">
 
-          {/* ========================================
-              MOBILE BRAND
-          ======================================== */}
+          {/* MOBILE BRAND */}
 
           <div className="login-mobile-brand">
 
             <div className="login-brand-mark">
-              L
+              <Scale size={19} />
             </div>
 
-            <span>
-              Lawlite
-            </span>
+            <span>LAWLITE</span>
 
           </div>
 
-
-          {/* ========================================
-              HEADING
-          ======================================== */}
+          {/* HEADING */}
 
           <div className="login-heading">
 
@@ -293,31 +471,44 @@ const Login = () => {
             </span>
 
             <h2>
-              Sign in to
-              <span> Lawlite.</span>
+              Sign in to <span>Lawlite.</span>
             </h2>
 
             <p>
-              Continue where you left off.
+              Continue where you left off and
+              make sense of the law.
             </p>
 
           </div>
 
+          {/* ERROR */}
 
-          {/* ========================================
-              LOGIN FORM
-          ======================================== */}
+          {error && (
+            <div className="login-message login-error">
+              {error}
+            </div>
+          )}
+
+          {/* SUCCESS */}
+
+          {success && (
+            <div className="login-message login-success">
+              {success}
+            </div>
+          )}
+
+          {/* LOGIN FORM */}
 
           <form
             className="login-form"
             onSubmit={handleSubmit}
           >
 
-            {/* Email */}
+            {/* EMAIL */}
 
             <div className="form-field">
 
-              <label htmlFor="email">
+              <label htmlFor="login-email">
                 Email address
               </label>
 
@@ -326,47 +517,48 @@ const Login = () => {
                 <Mail size={17} />
 
                 <input
-                  id="email"
+                  id="login-email"
                   type="email"
                   name="email"
                   placeholder="you@example.com"
                   value={formData.email}
                   onChange={handleChange}
                   autoComplete="email"
-                  required
                 />
 
               </div>
 
             </div>
 
-
-            {/* Password */}
+            {/* PASSWORD */}
 
             <div className="form-field">
 
               <div className="password-label-row">
 
-                <label htmlFor="password">
+                <label htmlFor="login-password">
                   Password
                 </label>
 
                 <button
                   type="button"
                   className="forgot-password"
+                  onClick={handleForgotPassword}
+                  disabled={resetLoading}
                 >
-                  Forgot password?
+                  {resetLoading
+                    ? "Sending..."
+                    : "Forgot password?"}
                 </button>
 
               </div>
-
 
               <div className="input-wrapper">
 
                 <LockKeyhole size={17} />
 
                 <input
-                  id="password"
+                  id="login-password"
                   type={
                     showPassword
                       ? "text"
@@ -377,16 +569,14 @@ const Login = () => {
                   value={formData.password}
                   onChange={handleChange}
                   autoComplete="current-password"
-                  required
                 />
-
 
                 <button
                   type="button"
                   className="password-toggle"
                   onClick={() =>
                     setShowPassword(
-                      (prev) => !prev
+                      (previous) => !previous
                     )
                   }
                   aria-label={
@@ -395,29 +585,29 @@ const Login = () => {
                       : "Show password"
                   }
                 >
-
                   {showPassword ? (
                     <EyeOff size={17} />
                   ) : (
                     <Eye size={17} />
                   )}
-
                 </button>
 
               </div>
 
             </div>
 
-
-            {/* Remember Me */}
+            {/* REMEMBER ME */}
 
             <label className="remember-row">
 
               <input
                 type="checkbox"
-                name="remember"
-                checked={formData.remember}
-                onChange={handleChange}
+                checked={rememberMe}
+                onChange={(event) =>
+                  setRememberMe(
+                    event.target.checked
+                  )
+                }
               />
 
               <span className="custom-checkbox">
@@ -430,111 +620,122 @@ const Login = () => {
 
             </label>
 
-
-            {/* Submit */}
+            {/* SIGN IN */}
 
             <button
               type="submit"
               className="login-submit"
+              disabled={
+                loading ||
+                googleLoading
+              }
             >
 
               <span>
-                Sign in
+                {loading
+                  ? "Signing in..."
+                  : "Sign in"}
               </span>
 
-              <ArrowRight size={17} />
-
-            </button>
-
-
-            {/* Divider */}
-
-            <div className="login-divider">
-
-              <span />
-
-              <p>
-                OR
-              </p>
-
-              <span />
-
-            </div>
-
-
-            {/* Google */}
-
-            <button
-              type="button"
-              className="google-button"
-            >
-
-              <span className="google-icon">
-                G
-              </span>
-
-              <span>
-                Continue with Google
-              </span>
+              {!loading && (
+                <ArrowRight size={18} />
+              )}
 
             </button>
 
           </form>
 
+          {/* DIVIDER */}
 
-          {/* ========================================
-              SIGNUP
-          ======================================== */}
+          <div className="login-divider">
 
-          <div className="login-signup">
+            <span />
 
-            <span>
-              Don't have an account?
-            </span>
+            <p>OR</p>
 
-            <a href="/signup">
-
-              Create one
-
-              <ArrowRight size={14} />
-
-            </a>
+            <span />
 
           </div>
 
+          {/* GOOGLE */}
 
-          {/* ========================================
-              LEGAL
-          ======================================== */}
+          <button
+            type="button"
+            className="google-button"
+            onClick={handleGoogleLogin}
+            disabled={
+              loading ||
+              googleLoading
+            }
+          >
 
-          <p className="login-legal">
+            <span className="google-icon">
+              G
+            </span>
 
-            By continuing, you agree to Lawlite's{" "}
+            <span>
+              {googleLoading
+                ? "Connecting to Google..."
+                : "Continue with Google"}
+            </span>
 
-            <a href="/terms">
-              Terms & Conditions
-            </a>{" "}
+          </button>
 
-            and acknowledge our{" "}
+          {/* SIGNUP */}
 
-            <a href="/privacy">
-              Privacy Policy
+          <p className="login-signup">
+
+            <span>
+              Don&apos;t have an account?
+            </span>
+
+            <a
+              href="/signup"
+              onClick={(event) => {
+                event.preventDefault();
+                navigate("/signup");
+              }}
+            >
+              Create one
+              <ArrowRight size={13} />
             </a>
-            .
 
           </p>
 
+          {/* LEGAL */}
 
-          {/* ========================================
-              DEVELOPER NOTE
-          ======================================== */}
+          <p className="login-legal">
+            By continuing, you agree to Lawlite&apos;s{" "}
+            <a
+              href="/terms"
+              onClick={(event) => {
+                event.preventDefault();
+                navigate("/terms");
+              }}
+            >
+              Terms &amp; Conditions
+            </a>{" "}
+            and{" "}
+            <a
+              href="/privacy"
+              onClick={(event) => {
+                event.preventDefault();
+                navigate("/privacy");
+              }}
+            >
+              Privacy Policy
+            </a>
+            .
+          </p>
+
+          {/* DEVELOPER NOTE */}
 
           <div className="login-developer-note">
 
-            <ShieldCheck size={14} />
+            <ShieldCheck size={13} />
 
             <span>
-              Lawlite is a personal project by Chaitanya N.
+              A personal project by Chaitanya N.
             </span>
 
           </div>
@@ -543,7 +744,7 @@ const Login = () => {
 
       </section>
 
-    </div>
+    </main>
   );
 };
 

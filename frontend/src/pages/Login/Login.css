@@ -1985,3 +1985,87 @@
     opacity: 1;
   }
 }
+/* ========================================
+   FIREBASE AUTH STATES
+======================================== */
+
+.login-message {
+  width: 100%;
+  margin-bottom: 22px;
+  padding: 12px 14px;
+  border: 1px solid;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.login-error {
+  color: #a33f38;
+  background: rgba(163, 63, 56, 0.06);
+  border-color: rgba(163, 63, 56, 0.22);
+}
+
+.login-success {
+  color: #4f743f;
+  background: rgba(79, 116, 63, 0.07);
+  border-color: rgba(79, 116, 63, 0.22);
+}
+
+/* Disabled buttons while Firebase is working */
+
+.login-submit:disabled,
+.google-button:disabled,
+.forgot-password:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.login-submit:disabled:hover,
+.google-button:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Forgot password loading state */
+
+.forgot-password:disabled {
+  text-decoration: none;
+}
+
+/* Google button loading state */
+
+.google-button:disabled {
+  pointer-events: none;
+}
+
+/* Better input autofill appearance */
+
+.input-wrapper input:-webkit-autofill,
+.input-wrapper input:-webkit-autofill:hover,
+.input-wrapper input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text-primary);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface-color) inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* Prevent buttons from inheriting unwanted browser styles */
+
+.login-submit,
+.google-button,
+.forgot-password,
+.password-toggle {
+  font-family: inherit;
+}
+
+/* ========================================
+   AUTH MOBILE
+======================================== */
+
+@media (max-width: 600px) {
+  .login-message {
+    margin-bottom: 18px;
+    padding: 11px 12px;
+    font-size: 10px;
+  }
+}

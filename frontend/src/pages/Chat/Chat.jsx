@@ -6,6 +6,8 @@ import {
   ArrowUp,
   Check,
   ChevronDown,
+  Clipboard,
+  Download,
   FileText,
   LogOut,
   Menu,
@@ -13,15 +15,18 @@ import {
   MoreHorizontal,
   Paperclip,
   Plus,
+  RotateCcw,
   Scale,
   Search,
   Settings,
   Shield,
   Sparkles,
   Sun,
+  ThumbsDown,
+  ThumbsUp,
   X,
 } from "lucide-react";
-
+import { jsPDF } from "jspdf";
 import { signOut } from "firebase/auth";
 import { auth } from "../../config/firebase";
 
@@ -83,6 +88,8 @@ const Chat = () => {
 
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [responseFeedback, setResponseFeedback] = useState({});
+const [copiedResponseId, setCopiedResponseId] = useState(null);
 
   const [theme, setTheme] = useState(() => {
     return (
@@ -558,6 +565,312 @@ const Chat = () => {
    * SEND MESSAGE
    * =========================================
    */
+  /*
+ * =========================================
+ * RESPONSE ACTIONS
+ * =========================================
+ */
+
+const handleCopyResponse = async (response) => {
+  if (!response?.text) {
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(response.text);
+
+    setCopiedResponseId(response.id);
+
+    setTimeout(() => {
+      setCopiedResponseId((current) =>
+        current === response.id ? null : current
+      );
+    }, 1800);
+  } catch (error) {
+    console.error("Copy response failed:", error);
+  }
+};
+
+const handleFeedback = (messageId, type) => {
+  setResponseFeedback((previous) => ({
+    ...previous,
+    [messageId]:
+      previous[messageId] === type
+        ? null
+        : type,
+  }));
+};
+
+const handleDownloadResponse = (response) => {
+  if (!response?.text) {
+    return;
+  }
+
+  const pdf = new jsPDF({
+    unit: "mm",
+    format: "a4",
+  });
+
+  const pageWidth = 210;
+  const pageHeight = 297;
+
+  const margin = 20;
+  const contentWidth =
+    pageWidth - margin * 2;
+
+  let y = 22;
+
+  /*
+   * HEADER
+   */
+
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(18);
+  pdf.text("LAWLITE", margin, y);
+
+  y += 8;
+
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(9);
+  pdf.setTextColor(110, 110, 110);
+  pdf.text(
+    "AI-assisted legal understanding",
+    margin,
+    y
+  );
+
+  y += 12;
+
+  /*
+   * DIVIDER
+   */
+
+  pdf.setDrawColor(220, 220, 220);
+  pdf.line(
+    margin,
+    y,
+    pageWidth - margin,
+    y
+  );
+
+  y += 12;
+
+  /*
+   * PROMPT
+   */
+
+  pdf.setTextColor(30, 30, 30);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(11);
+  pdf.text("Your prompt", margin, y);
+
+  y += 7;
+
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(10);
+
+  const promptText =
+    response.prompt ||
+    "Prompt unavailable.";
+
+  const promptLines =
+    pdf.splitTextToSize(
+      promptText,
+      contentWidth
+    );
+
+  pdf.text(promptLines, margin, y);
+
+  y +=
+    promptLines.length * 5 +
+    12;
+
+  /*
+   * RESPONSE
+   */
+
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(11);
+  pdf.setTextColor(30, 30, 30);
+
+  pdf.text(
+    "Lawlite's response",
+    margin,
+    y
+  );
+
+  y += 7;
+
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(10);
+
+  /*
+   * Convert markdown-ish formatting
+   * into readable PDF text.
+   */
+
+  const cleanResponse =
+    response.text
+      .replace(/^#{1,6}\s*/gm, "")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/\*(.*?)\*/g, "$1")
+      .replace(/`([^`]+)`/g, "$1");
+
+  const responseLines =
+    pdf.splitTextToSize(
+      cleanResponse,
+      contentWidth
+    );
+
+  /*
+   * PAGE BREAK SUPPORT
+   */
+
+  responseLines.forEach((line) => {
+    if (y > pageHeight - 20) {
+      pdf.addPage();
+      y = 22;
+    }
+
+    pdf.text(line, margin, y);
+    y += 5;
+  });
+
+  /*
+   * FOOTER
+   */
+
+  const totalPages =
+    pdf.internal.getNumberOfPages();
+
+  for (
+    let page = 1;
+    page <= totalPages;
+    page += 1
+  ) {
+    pdf.setPage(page);
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7);
+    pdf.setTextColor(145, 145, 145);
+
+    pdf.text(
+      "Lawlite provides AI-assisted legal information and is not a substitute for qualified legal advice.",
+      margin,
+      pageHeight - 12
+    );
+
+    pdf.text(
+      `Page ${page} of ${totalPages}`,
+      pageWidth - margin,
+      pageHeight - 12,
+      {
+        align: "right",
+      }
+    );
+  }
+
+  /*
+   * FILE NAME
+   */
+
+  const fileName =
+    response.prompt
+      ?.slice(0, 40)
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-|-$/g, "")
+      .toLowerCase() ||
+    "lawlite-response";
+
+  pdf.save(
+    `lawlite-${fileName}.pdf`
+  );
+};
+
+const handleRegenerateResponse = async (
+  response
+) => {
+  if (
+    !response ||
+    response.role !== "assistant" ||
+    isSending
+  ) {
+    return;
+  }
+
+  const responseIndex =
+    messages.findIndex(
+      (item) => item.id === response.id
+    );
+
+  if (responseIndex === -1) {
+    return;
+  }
+
+  /*
+   * Everything before this response.
+   * This includes the user prompt that
+   * originally generated the response.
+   */
+
+  const previousMessages =
+    messages.slice(0, responseIndex);
+
+  const conversation =
+    previousMessages
+      .filter(
+        (item) =>
+          (item.role === "user" ||
+            item.role === "assistant") &&
+          typeof item.text === "string" &&
+          item.text.trim()
+      )
+      .map((item) => ({
+        role: item.role,
+        content: item.text.trim(),
+      }));
+
+  if (!conversation.length) {
+    return;
+  }
+
+  setIsSending(true);
+
+  try {
+    const newAnswer =
+      await getSarvamResponse(
+        conversation
+      );
+
+    const updatedResponse = {
+      ...response,
+      text:
+        newAnswer ||
+        "I wasn't able to generate a response right now.",
+      typing: true,
+    };
+
+    setMessages((previous) =>
+      previous.map((item) =>
+        item.id === response.id
+          ? updatedResponse
+          : item
+      )
+    );
+
+    await typeAssistantMessage(
+      updatedResponse.text,
+      response.id
+    );
+  } catch (error) {
+    console.error(
+      "Regenerate response failed:",
+      error
+    );
+  } finally {
+    setIsSending(false);
+  }
+};
 
   const handleSend = async () => {
     const trimmedMessage =
@@ -671,11 +984,12 @@ const Chat = () => {
         );
 
       const assistantMessage = {
-        id: assistantMessageId,
-        role: "assistant",
-        text: "",
-        typing: true,
-      };
+  id: assistantMessageId,
+  role: "assistant",
+  text: "",
+  prompt: trimmedMessage,
+  typing: true,
+};
 
       setMessages((previous) => [
         ...previous,
@@ -1241,28 +1555,116 @@ const Chat = () => {
                   )}
 
                   <div className="chat-message-content">
+  <span className="chat-message-role">
+    {item.role === "user"
+      ? firstName
+      : "Lawlite"}
+  </span>
 
-                    <span className="chat-message-role">
-                      {item.role === "user"
-                        ? firstName
-                        : "Lawlite"}
-                    </span>
+  <div className="chat-message-markdown">
+    <ReactMarkdown>
+      {item.text}
+    </ReactMarkdown>
 
-                    <div className="chat-message-markdown">
-  <ReactMarkdown>
-    {item.text}
-  </ReactMarkdown>
+    {item.typing && (
+      <span className="chat-typing-cursor">
+        ▌
+      </span>
+    )}
+  </div>
 
-  {item.typing && (
-    <span className="chat-typing-cursor">
-      ▌
-    </span>
-  )}
+  {item.role === "assistant" &&
+    item.text &&
+    !item.typing && (
+      <div className="chat-response-actions">
+
+        <button
+          type="button"
+          className="chat-response-action"
+          onClick={() =>
+            handleCopyResponse(item)
+          }
+          title="Copy response"
+        >
+          {copiedResponseId === item.id ? (
+            <Check size={14} />
+          ) : (
+            <Clipboard size={14} />
+          )}
+
+          <span>
+            {copiedResponseId === item.id
+              ? "Copied"
+              : "Copy"}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          className={`chat-response-action ${
+            responseFeedback[item.id] ===
+            "good"
+              ? "selected"
+              : ""
+          }`}
+          onClick={() =>
+            handleFeedback(item.id, "good")
+          }
+          title="Good response"
+        >
+          <ThumbsUp size={14} />
+          <span>Good</span>
+        </button>
+
+        <button
+          type="button"
+          className={`chat-response-action ${
+            responseFeedback[item.id] ===
+            "bad"
+              ? "selected"
+              : ""
+          }`}
+          onClick={() =>
+            handleFeedback(item.id, "bad")
+          }
+          title="Bad response"
+        >
+          <ThumbsDown size={14} />
+          <span>Bad</span>
+        </button>
+
+        <button
+          type="button"
+          className="chat-response-action"
+          onClick={() =>
+            handleRegenerateResponse(item)
+          }
+          disabled={isSending}
+          title="Regenerate response"
+        >
+          <RotateCcw size={14} />
+          <span>Re-respond</span>
+        </button>
+
+        <button
+          type="button"
+          className="chat-response-action"
+          onClick={() =>
+            handleDownloadResponse(item)
+          }
+          title="Download response as PDF"
+        >
+          <Download size={14} />
+          <span>Download</span>
+        </button>
+
+      </div>
+    )}
 </div>
 
                   </div>
 
-                </div>
+                
               ))}
 
               {isSending &&

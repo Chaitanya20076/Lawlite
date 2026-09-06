@@ -2819,3 +2819,144 @@ body,
 [data-theme="dark"] .chat-message-markdown a {
   color: #d2aa3a;
 }
+/* =========================================================
+   RESPONSE ACTIONS
+========================================================= */
+
+.chat-response-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+
+  margin-top: 10px;
+
+  opacity: 0;
+
+  transform: translateY(-2px);
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.chat-message-assistant
+  .chat-message-content:hover
+  .chat-response-actions {
+  opacity: 1;
+
+  transform: translateY(0);
+}
+
+.chat-response-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  min-height: 27px;
+
+  padding: 5px 7px;
+
+  border: 1px solid transparent;
+  border-radius: 6px;
+
+  color: #91877b;
+  background: transparent;
+
+  font-size: 8px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.chat-response-action:hover {
+  color: #4f463d;
+
+  background:
+    rgba(201, 120, 63, 0.07);
+
+  border-color:
+    rgba(201, 120, 63, 0.12);
+}
+
+.chat-response-action.selected {
+  color: #b56a34;
+
+  background:
+    rgba(201, 120, 63, 0.09);
+
+  border-color:
+    rgba(201, 120, 63, 0.16);
+}
+
+.chat-response-action:disabled {
+  opacity: 0.45;
+
+  cursor: not-allowed;
+}
+
+[data-theme="dark"]
+  .chat-response-action {
+  color: #938b7f;
+}
+
+[data-theme="dark"]
+  .chat-response-action:hover {
+  color: #d2aa3a;
+
+  background:
+    rgba(210, 170, 58, 0.07);
+
+  border-color:
+    rgba(210, 170, 58, 0.13);
+}
+
+[data-theme="dark"]
+  .chat-response-action.selected {
+  color: #d2aa3a;
+
+  background:
+    rgba(210, 170, 58, 0.09);
+
+  border-color:
+    rgba(210, 170, 58, 0.16);
+}
+
+
+/* =========================================================
+   RESPONSE ACTION MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+  .chat-response-actions {
+    opacity: 1;
+
+    transform: none;
+
+    margin-top: 9px;
+  }
+
+  .chat-response-action {
+    min-height: 29px;
+
+    padding: 5px 6px;
+
+    font-size: 7px;
+  }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-response-actions {
+    transition: none;
+  }
+}

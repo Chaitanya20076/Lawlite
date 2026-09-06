@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import {
   ArrowRight,
   Eye,
@@ -13,12 +15,43 @@ import {
   Check,
 } from "lucide-react";
 
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "../../config/firebase";
+
 import "./Signup.css";
 
+const API_URL = "http://localhost:5000/api";
+
 const Signup = () => {
-  const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
+
+  // ========================================
+  // UI STATE
+  // ========================================
+
+  const [step, setStep] = useState("signup");
+
+  const [showPassword, setShowPassword] =
+    useState(false);
+
   const [showConfirmPassword, setShowConfirmPassword] =
     useState(false);
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [googleLoading, setGoogleLoading] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  const [success, setSuccess] =
+    useState("");
+
+  // ========================================
+  // FORM DATA
+  // ========================================
 
   const [formData, setFormData] = useState({
     name: "",
@@ -28,8 +61,19 @@ const Signup = () => {
     terms: false,
   });
 
+  const [otp, setOtp] = useState("");
+
+  // ========================================
+  // INPUT HANDLING
+  // ========================================
+
   const handleChange = (event) => {
-    const { name, value, type, checked } = event.target;
+    const {
+      name,
+      value,
+      type,
+      checked,
+    } = event.target;
 
     setFormData((prev) => ({
       ...prev,
@@ -38,17 +82,355 @@ const Signup = () => {
           ? checked
           : value,
     }));
+
+    setError("");
+    setSuccess("");
   };
 
-  const handleSubmit = (event) => {
+  // ========================================
+  // OTP INPUT
+  // ========================================
+
+  const handleOtpChange = (event) => {
+    const value = event.target.value
+      .replace(/\D/g, "")
+      .slice(0, 6);
+
+    setOtp(value);
+
+    setError("");
+    setSuccess("");
+  };
+
+  // ========================================
+  // SEND OTP
+  // ========================================
+
+  const sendOtp = async () => {
+    const response = await fetch(
+      `${API_URL}/auth/send-otp`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          password: formData.password,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message ||
+          "Unable to send verification code."
+      );
+    }
+
+    return data;
+  };
+
+  // ========================================
+  // NORMAL SIGNUP
+  // ========================================
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    // Account creation will be connected later.
-    console.log(
-      "Signup submitted:",
-      formData
-    );
+    setError("");
+    setSuccess("");
+
+    // Name validation
+    if (!formData.name.trim()) {
+      setError("Please enter your full name.");
+      return;
+    }
+
+    // Email validation
+    if (!formData.email.trim()) {
+      setError("Please enter your email address.");
+      return;
+    }
+
+    // Password validation
+    if (formData.password.length < 8) {
+      setError(
+        "Password must be at least 8 characters."
+      );
+      return;
+    }
+
+    // Confirm password validation
+    if (
+      formData.password !==
+      formData.confirmPassword
+    ) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    // Terms validation
+    if (!formData.terms) {
+      setError(
+        "Please accept the Terms & Conditions to continue."
+      );
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      await sendOtp();
+
+      setOtp("");
+
+      setStep("otp");
+
+      setSuccess(
+        "We've sent a 6-digit verification code to your email."
+      );
+    } catch (err) {
+      console.error(
+        "Send OTP error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Unable to send the verification code. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // ========================================
+  // VERIFY OTP
+  // ========================================
+
+  const handleVerifyOtp = async (event) => {
+    event.preventDefault();
+
+    setError("");
+    setSuccess("");
+
+    if (otp.length !== 6) {
+      setError(
+        "Please enter the 6-digit verification code."
+      );
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(
+        `${API_URL}/auth/verify-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: formData.email.trim(),
+            otp,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            "Unable to verify the code."
+        );
+      }
+
+      setSuccess(
+        "Email verified successfully. Your account has been created."
+      );
+
+      /*
+       * The backend has now created the Firebase
+       * account with emailVerified: true.
+       *
+       * For now, send the user to Login.
+       *
+       * Later we'll add the proper Firebase
+       * session/token flow here.
+       */
+
+      setTimeout(() => {
+        navigate("/login", {
+          state: {
+            email: formData.email.trim(),
+            signupSuccess: true,
+          },
+        });
+      }, 1000);
+    } catch (err) {
+      console.error(
+        "OTP verification error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Unable to verify the code. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ========================================
+  // RESEND OTP
+  // ========================================
+
+  const handleResendOtp = async () => {
+    setError("");
+    setSuccess("");
+
+    try {
+      setLoading(true);
+
+      await sendOtp();
+
+      setOtp("");
+
+      setSuccess(
+        "A new verification code has been sent to your email."
+      );
+    } catch (err) {
+      console.error(
+        "Resend OTP error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Unable to resend the verification code."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ========================================
+  // GOOGLE SIGNUP
+  // ========================================
+
+  const handleGoogleSignup = async () => {
+    setError("");
+    setSuccess("");
+
+    // User must accept terms before
+    // starting Google authentication.
+    if (!formData.terms) {
+      setError(
+        "Please accept the Terms & Conditions to continue."
+      );
+
+      return;
+    }
+
+    try {
+      setGoogleLoading(true);
+
+      const result = await signInWithPopup(
+        auth,
+        googleProvider
+      );
+
+      const user = result.user;
+
+      console.log(
+        "Google signup successful:",
+        {
+          uid: user.uid,
+          name: user.displayName,
+          email: user.email,
+          emailVerified:
+            user.emailVerified,
+        }
+      );
+
+      setSuccess(
+        `Welcome to Lawlite${
+          user.displayName
+            ? `, ${user.displayName}`
+            : ""
+        }!`
+      );
+
+      /*
+       * Firebase has successfully authenticated
+       * the Google account.
+       *
+       * For now we redirect to the homepage.
+       *
+       * Later we'll send the Firebase ID token
+       * to the Lawlite backend so both Google
+       * users and OTP users use the same backend
+       * authentication/session system.
+       */
+
+      setTimeout(() => {
+        navigate("/");
+      }, 800);
+    } catch (err) {
+      console.error(
+        "Google signup error:",
+        err
+      );
+
+      if (
+        err.code ===
+        "auth/popup-closed-by-user"
+      ) {
+        setError(
+          "Google sign-up was cancelled."
+        );
+      } else if (
+        err.code ===
+        "auth/popup-blocked"
+      ) {
+        setError(
+          "Your browser blocked the Google sign-up popup."
+        );
+      } else if (
+        err.code ===
+        "auth/account-exists-with-different-credential"
+      ) {
+        setError(
+          "An account already exists with this email using another sign-in method."
+        );
+      } else if (
+        err.code ===
+        "auth/network-request-failed"
+      ) {
+        setError(
+          "Network error. Please check your internet connection."
+        );
+      } else {
+        setError(
+          err.message ||
+            "Google sign-up failed. Please try again."
+        );
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  // ========================================
+  // RENDER
+  // ========================================
 
   return (
     <div className="signup-page">
@@ -64,8 +446,8 @@ const Signup = () => {
         <div className="signup-grid" />
 
         <div className="signup-glow signup-glow-one" />
-        <div className="signup-glow signup-glow-two" />
 
+        <div className="signup-glow signup-glow-two" />
 
         {/* Particles */}
 
@@ -82,7 +464,6 @@ const Signup = () => {
 
         </div>
 
-
         {/* Brand */}
 
         <div className="signup-brand">
@@ -97,10 +478,11 @@ const Signup = () => {
 
         </div>
 
-
         {/* Main Content */}
 
         <div className="signup-visual-content">
+
+          {/* Eyebrow */}
 
           <div className="signup-eyebrow">
 
@@ -112,10 +494,9 @@ const Signup = () => {
 
           </div>
 
-
-          {/* ========================================
+          {/* ====================================
               ANIMATED HEADING
-          ======================================== */}
+          ==================================== */}
 
           <h1 className="signup-animated-heading">
 
@@ -145,6 +526,7 @@ const Signup = () => {
 
           </h1>
 
+          {/* Description */}
 
           <p>
             Create your Lawlite account and turn
@@ -152,10 +534,9 @@ const Signup = () => {
             you can actually understand.
           </p>
 
-
-          {/* ========================================
+          {/* ====================================
               TRANSFORMATION VISUAL
-          ======================================== */}
+          ==================================== */}
 
           <div className="signup-transform">
 
@@ -173,7 +554,6 @@ const Signup = () => {
 
               </div>
 
-
               <div className="signup-document-lines">
 
                 <span />
@@ -186,13 +566,11 @@ const Signup = () => {
 
               </div>
 
-
               <div className="signup-document-mark">
                 §
               </div>
 
             </div>
-
 
             {/* Arrow */}
 
@@ -205,7 +583,6 @@ const Signup = () => {
               <div />
 
             </div>
-
 
             {/* Explanation */}
 
@@ -223,17 +600,14 @@ const Signup = () => {
 
               </div>
 
-
               <h3>
                 Simple.
               </h3>
-
 
               <p>
                 Complex legal language,
                 explained in everyday words.
               </p>
-
 
               <div className="signup-explanation-status">
 
@@ -249,10 +623,9 @@ const Signup = () => {
 
           </div>
 
-
-          {/* ========================================
+          {/* ====================================
               PROCESS
-          ======================================== */}
+          ==================================== */}
 
           <div className="signup-process">
 
@@ -263,6 +636,7 @@ const Signup = () => {
               </span>
 
               <div>
+
                 <strong>
                   Upload
                 </strong>
@@ -270,13 +644,12 @@ const Signup = () => {
                 <small>
                   Your document
                 </small>
+
               </div>
 
             </div>
 
-
             <div className="signup-process-line" />
-
 
             <div className="signup-process-item">
 
@@ -285,6 +658,7 @@ const Signup = () => {
               </span>
 
               <div>
+
                 <strong>
                   Understand
                 </strong>
@@ -292,13 +666,12 @@ const Signup = () => {
                 <small>
                   What it means
                 </small>
+
               </div>
 
             </div>
 
-
             <div className="signup-process-line" />
-
 
             <div className="signup-process-item">
 
@@ -307,6 +680,7 @@ const Signup = () => {
               </span>
 
               <div>
+
                 <strong>
                   Clarify
                 </strong>
@@ -314,6 +688,7 @@ const Signup = () => {
                 <small>
                   What's confusing
                 </small>
+
               </div>
 
             </div>
@@ -321,7 +696,6 @@ const Signup = () => {
           </div>
 
         </div>
-
 
         {/* Footer */}
 
@@ -346,10 +720,9 @@ const Signup = () => {
 
         <div className="signup-form-wrapper">
 
-
-          {/* ========================================
+          {/* ====================================
               MOBILE BRAND
-          ======================================== */}
+          ==================================== */}
 
           <div className="signup-mobile-brand">
 
@@ -364,319 +737,538 @@ const Signup = () => {
           </div>
 
 
-          {/* ========================================
-              HEADING
-          ======================================== */}
+          {/* ====================================
+              SIGNUP STEP
+          ==================================== */}
 
-          <div className="signup-heading">
+          {step === "signup" && (
+            <>
+              {/* ==================================
+                  HEADING
+              ================================== */}
 
-            <span className="signup-form-label">
-              GET STARTED
-            </span>
+              <div className="signup-heading">
 
-            <h2>
-              Create your
-              <span> Lawlite.</span>
-            </h2>
+                <span className="signup-form-label">
+                  GET STARTED
+                </span>
 
-            <p>
-              Start making sense of the law.
-            </p>
+                <h2>
+                  Create your
+                  <span> Lawlite.</span>
+                </h2>
 
-          </div>
-
-
-          {/* ========================================
-              FORM
-          ======================================== */}
-
-          <form
-            className="signup-form"
-            onSubmit={handleSubmit}
-          >
-
-
-            {/* Full Name */}
-
-            <div className="signup-form-field">
-
-              <label htmlFor="signup-name">
-                Full name
-              </label>
-
-              <div className="signup-input-wrapper">
-
-                <User size={17} />
-
-                <input
-                  id="signup-name"
-                  type="text"
-                  name="name"
-                  placeholder="Your name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  autoComplete="name"
-                  required
-                />
+                <p>
+                  Start making sense of the law.
+                </p>
 
               </div>
 
-            </div>
+
+              {/* ==================================
+                  FORM
+              ================================== */}
+
+              <form
+                className="signup-form"
+                onSubmit={handleSubmit}
+              >
+
+                {/* Full Name */}
+
+                <div className="signup-form-field">
+
+                  <label htmlFor="signup-name">
+                    Full name
+                  </label>
+
+                  <div className="signup-input-wrapper">
+
+                    <User size={17} />
+
+                    <input
+                      id="signup-name"
+                      type="text"
+                      name="name"
+                      placeholder="Your name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      autoComplete="name"
+                      required
+                    />
+
+                  </div>
+
+                </div>
 
 
-            {/* Email */}
+                {/* Email */}
 
-            <div className="signup-form-field">
+                <div className="signup-form-field">
 
-              <label htmlFor="signup-email">
-                Email address
-              </label>
+                  <label htmlFor="signup-email">
+                    Email address
+                  </label>
 
-              <div className="signup-input-wrapper">
+                  <div className="signup-input-wrapper">
 
-                <Mail size={17} />
+                    <Mail size={17} />
 
-                <input
-                  id="signup-email"
-                  type="email"
-                  name="email"
-                  placeholder="you@example.com"
-                  value={formData.email}
-                  onChange={handleChange}
-                  autoComplete="email"
-                  required
-                />
+                    <input
+                      id="signup-email"
+                      type="email"
+                      name="email"
+                      placeholder="you@example.com"
+                      value={formData.email}
+                      onChange={handleChange}
+                      autoComplete="email"
+                      required
+                    />
 
-              </div>
+                  </div>
 
-            </div>
+                </div>
 
 
-            {/* Password */}
+                {/* Password */}
 
-            <div className="signup-form-field">
+                <div className="signup-form-field">
 
-              <label htmlFor="signup-password">
-                Password
-              </label>
+                  <label htmlFor="signup-password">
+                    Password
+                  </label>
 
-              <div className="signup-input-wrapper">
+                  <div className="signup-input-wrapper">
 
-                <LockKeyhole size={17} />
+                    <LockKeyhole size={17} />
 
-                <input
-                  id="signup-password"
-                  type={
-                    showPassword
-                      ? "text"
-                      : "password"
-                  }
-                  name="password"
-                  placeholder="Create a password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  autoComplete="new-password"
-                  required
-                  minLength={8}
-                />
+                    <input
+                      id="signup-password"
+                      type={
+                        showPassword
+                          ? "text"
+                          : "password"
+                      }
+                      name="password"
+                      placeholder="Create a password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      autoComplete="new-password"
+                      required
+                      minLength={8}
+                    />
+
+                    <button
+                      type="button"
+                      className="signup-password-toggle"
+                      onClick={() =>
+                        setShowPassword(
+                          (prev) => !prev
+                        )
+                      }
+                      aria-label={
+                        showPassword
+                          ? "Hide password"
+                          : "Show password"
+                      }
+                    >
+
+                      {showPassword ? (
+                        <EyeOff size={17} />
+                      ) : (
+                        <Eye size={17} />
+                      )}
+
+                    </button>
+
+                  </div>
+
+                </div>
+
+
+                {/* Confirm Password */}
+
+                <div className="signup-form-field">
+
+                  <label htmlFor="signup-confirm-password">
+                    Confirm password
+                  </label>
+
+                  <div className="signup-input-wrapper">
+
+                    <LockKeyhole size={17} />
+
+                    <input
+                      id="signup-confirm-password"
+                      type={
+                        showConfirmPassword
+                          ? "text"
+                          : "password"
+                      }
+                      name="confirmPassword"
+                      placeholder="Repeat your password"
+                      value={
+                        formData.confirmPassword
+                      }
+                      onChange={handleChange}
+                      autoComplete="new-password"
+                      required
+                      minLength={8}
+                    />
+
+                    <button
+                      type="button"
+                      className="signup-password-toggle"
+                      onClick={() =>
+                        setShowConfirmPassword(
+                          (prev) => !prev
+                        )
+                      }
+                      aria-label={
+                        showConfirmPassword
+                          ? "Hide password"
+                          : "Show password"
+                      }
+                    >
+
+                      {showConfirmPassword ? (
+                        <EyeOff size={17} />
+                      ) : (
+                        <Eye size={17} />
+                      )}
+
+                    </button>
+
+                  </div>
+
+                </div>
+
+
+                {/* ==================================
+                    TERMS
+                ================================== */}
+
+                <label className="signup-terms-row">
+
+                  <input
+                    type="checkbox"
+                    name="terms"
+                    checked={formData.terms}
+                    onChange={handleChange}
+                    required
+                  />
+
+                  <span className="signup-custom-checkbox">
+
+                    <Check size={12} />
+
+                  </span>
+
+                  <span>
+
+                    I agree to the{" "}
+
+                    <a
+                      href="/terms"
+                      onClick={(event) =>
+                        event.stopPropagation()
+                      }
+                    >
+                      Terms &amp; Conditions
+                    </a>{" "}
+
+                    and acknowledge the{" "}
+
+                    <a
+                      href="/privacy"
+                      onClick={(event) =>
+                        event.stopPropagation()
+                      }
+                    >
+                      Privacy Policy
+                    </a>
+                    .
+
+                  </span>
+
+                </label>
+
+
+                {/* ==================================
+                    ERROR / SUCCESS
+                ================================== */}
+
+                {error && (
+                  <div
+                    className="signup-message signup-error"
+                    role="alert"
+                  >
+                    {error}
+                  </div>
+                )}
+
+                {success && (
+                  <div
+                    className="signup-message signup-success"
+                    role="status"
+                  >
+                    {success}
+                  </div>
+                )}
+
+
+                {/* ==================================
+                    CREATE ACCOUNT
+                ================================== */}
 
                 <button
-                  type="button"
-                  className="signup-password-toggle"
-                  onClick={() =>
-                    setShowPassword(
-                      (prev) => !prev
-                    )
-                  }
-                  aria-label={
-                    showPassword
-                      ? "Hide password"
-                      : "Show password"
+                  type="submit"
+                  className="signup-submit"
+                  disabled={
+                    loading ||
+                    googleLoading
                   }
                 >
 
-                  {showPassword ? (
-                    <EyeOff size={17} />
-                  ) : (
-                    <Eye size={17} />
+                  <span>
+                    {loading
+                      ? "Sending code..."
+                      : "Create account"}
+                  </span>
+
+                  {!loading && (
+                    <ArrowRight size={17} />
                   )}
 
                 </button>
 
-              </div>
 
-            </div>
+                {/* ==================================
+                    DIVIDER
+                ================================== */}
+
+                <div className="signup-divider">
+
+                  <span />
+
+                  <p>
+                    OR
+                  </p>
+
+                  <span />
+
+                </div>
 
 
-            {/* Confirm Password */}
-
-            <div className="signup-form-field">
-
-              <label htmlFor="signup-confirm-password">
-                Confirm password
-              </label>
-
-              <div className="signup-input-wrapper">
-
-                <LockKeyhole size={17} />
-
-                <input
-                  id="signup-confirm-password"
-                  type={
-                    showConfirmPassword
-                      ? "text"
-                      : "password"
-                  }
-                  name="confirmPassword"
-                  placeholder="Repeat your password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  autoComplete="new-password"
-                  required
-                  minLength={8}
-                />
+                {/* ==================================
+                    GOOGLE
+                ================================== */}
 
                 <button
                   type="button"
-                  className="signup-password-toggle"
-                  onClick={() =>
-                    setShowConfirmPassword(
-                      (prev) => !prev
-                    )
-                  }
-                  aria-label={
-                    showConfirmPassword
-                      ? "Hide password"
-                      : "Show password"
+                  className="signup-google-button"
+                  onClick={handleGoogleSignup}
+                  disabled={
+                    loading ||
+                    googleLoading
                   }
                 >
 
-                  {showConfirmPassword ? (
-                    <EyeOff size={17} />
-                  ) : (
-                    <Eye size={17} />
-                  )}
+                  <span className="signup-google-icon">
+                    G
+                  </span>
+
+                  <span>
+                    {googleLoading
+                      ? "Connecting to Google..."
+                      : "Continue with Google"}
+                  </span>
 
                 </button>
 
-              </div>
-
-            </div>
+              </form>
 
 
-            {/* Terms */}
+              {/* ==================================
+                  LOGIN LINK
+              ================================== */}
 
-            <label className="signup-terms-row">
+              <div className="signup-login">
 
-              <input
-                type="checkbox"
-                name="terms"
-                checked={formData.terms}
-                onChange={handleChange}
-                required
-              />
+                <span>
+                  Already have an account?
+                </span>
 
-              <span className="signup-custom-checkbox">
+                <a href="/login">
 
-                <Check size={12} />
+                  Sign in
 
-              </span>
+                  <ArrowRight size={14} />
 
-              <span>
-                I agree to the{" "}
-                <a
-                  href="/terms"
-                  onClick={(event) =>
-                    event.stopPropagation()
-                  }
-                >
-                  Terms & Conditions
-                </a>{" "}
-                and acknowledge the{" "}
-                <a
-                  href="/privacy"
-                  onClick={(event) =>
-                    event.stopPropagation()
-                  }
-                >
-                  Privacy Policy
                 </a>
-                .
-              </span>
 
-            </label>
+              </div>
 
-
-            {/* Submit */}
-
-            <button
-              type="submit"
-              className="signup-submit"
-            >
-
-              <span>
-                Create account
-              </span>
-
-              <ArrowRight size={17} />
-
-            </button>
-
-
-            {/* Divider */}
-
-            <div className="signup-divider">
-
-              <span />
-
-              <p>
-                OR
-              </p>
-
-              <span />
-
-            </div>
-
-
-            {/* Google */}
-
-            <button
-              type="button"
-              className="signup-google-button"
-            >
-
-              <span className="signup-google-icon">
-                G
-              </span>
-
-              <span>
-                Continue with Google
-              </span>
-
-            </button>
-
-          </form>
+            </>
+          )}
 
 
           {/* ========================================
-              LOGIN LINK
+              OTP STEP
           ======================================== */}
 
-          <div className="signup-login">
+          {step === "otp" && (
+            <div className="signup-otp-screen">
 
-            <span>
-              Already have an account?
-            </span>
+              {/* OTP Icon */}
 
-            <a href="/login">
+              <div className="signup-otp-icon">
 
-              Sign in
+                <ShieldCheck size={27} />
 
-              <ArrowRight size={14} />
+              </div>
 
-            </a>
 
-          </div>
+              {/* OTP Heading */}
+
+              <div className="signup-heading">
+
+                <span className="signup-form-label">
+                  VERIFY EMAIL
+                </span>
+
+                <h2>
+                  Check your
+                  <span> inbox.</span>
+                </h2>
+
+                <p>
+                  We've sent a 6-digit verification
+                  code to
+                </p>
+
+                <strong className="signup-otp-email">
+                  {formData.email}
+                </strong>
+
+              </div>
+
+
+              {/* OTP FORM */}
+
+              <form
+                className="signup-form signup-otp-form"
+                onSubmit={handleVerifyOtp}
+              >
+
+                <div className="signup-form-field">
+
+                  <label htmlFor="signup-otp">
+                    Verification code
+                  </label>
+
+                  <input
+                    id="signup-otp"
+                    className="signup-otp-input"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="000000"
+                    value={otp}
+                    onChange={handleOtpChange}
+                    maxLength={6}
+                    autoFocus
+                  />
+
+                </div>
+
+
+                {/* Messages */}
+
+                {error && (
+                  <div
+                    className="signup-message signup-error"
+                    role="alert"
+                  >
+                    {error}
+                  </div>
+                )}
+
+                {success && (
+                  <div
+                    className="signup-message signup-success"
+                    role="status"
+                  >
+                    {success}
+                  </div>
+                )}
+
+
+                {/* Verify */}
+
+                <button
+                  type="submit"
+                  className="signup-submit"
+                  disabled={loading}
+                >
+
+                  <span>
+                    {loading
+                      ? "Verifying..."
+                      : "Verify & continue"}
+                  </span>
+
+                  {!loading && (
+                    <ArrowRight size={17} />
+                  )}
+
+                </button>
+
+              </form>
+
+
+              {/* OTP ACTIONS */}
+
+              <div className="signup-otp-actions">
+
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={loading}
+                >
+                  Resend code
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep("signup");
+                    setOtp("");
+                    setError("");
+                    setSuccess("");
+                  }}
+                >
+                  Use a different email
+                </button>
+
+              </div>
+
+
+              {/* Security Note */}
+
+              <div className="signup-security-note">
+
+                <ShieldCheck size={15} />
+
+                <span>
+                  Your verification code expires
+                  in 5 minutes.
+                </span>
+
+              </div>
+
+            </div>
+          )}
 
 
           {/* ========================================

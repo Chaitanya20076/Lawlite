@@ -6,6 +6,7 @@ import {
   ArrowUp,
   Check,
   ChevronDown,
+  Cloud,
   Clipboard,
   Download,
   FileText,
@@ -23,11 +24,21 @@ import {
   Sparkles,
   Sun,
   ThumbsDown,
+  Cable,
   ThumbsUp,
+  Unplug,
   X,
 } from "lucide-react";
+import {
+  SiDropbox,
+  SiGithub,
+  SiGmail,
+  SiGooglecalendar,
+  SiGoogledrive,
+  SiNotion,
+} from "react-icons/si";
 import { jsPDF } from "jspdf";
-import { signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "../../config/firebase";
 
 import "./Chat.css";
@@ -72,6 +83,81 @@ const interestOptions = [
     label: "General Law",
   },
 ];
+const connectorGroups = [
+  {
+    title: "Documents",
+    items: [
+      {
+        id: "google-drive",
+        name: "Google Drive",
+        description: "Import documents and PDFs",
+        icon: SiGoogledrive,
+      },
+      {
+        id: "dropbox",
+        name: "Dropbox",
+        description: "Access files from Dropbox",
+        icon: SiDropbox,
+      },
+      {
+        id: "onedrive",
+        name: "OneDrive",
+        description: "Access Microsoft files",
+        icon: Cloud,
+      },
+      {
+        id: "notion",
+        name: "Notion",
+        description: "Connect pages and databases",
+        icon: SiNotion,
+      },
+    ],
+  },
+
+  {
+    title: "Communication",
+    items: [
+      {
+        id: "gmail",
+        name: "Gmail",
+        description: "Find emails and attachments",
+        icon: SiGmail,
+      },
+      {
+  id: "slack",
+  name: "Slack",
+  description: "Search permitted workspace content",
+  icon: Cable,
+},
+    ],
+  },
+
+  {
+    title: "Productivity",
+    items: [
+      {
+        id: "google-calendar",
+        name: "Google Calendar",
+        description: "Access events and deadlines",
+        icon: SiGooglecalendar,
+      },
+    ],
+  },
+
+  {
+    title: "Developer",
+    items: [
+      {
+        id: "github",
+        name: "GitHub",
+        description: "Access repositories and files",
+        icon: SiGithub,
+      },
+    ],
+  },
+];
+
+
 
 const Chat = () => {
   const navigate = useNavigate();
@@ -83,6 +169,9 @@ const Chat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [connectorsOpen, setConnectorsOpen] = useState(false);
+  
+const [connectorNotice, setConnectorNotice] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -90,6 +179,152 @@ const Chat = () => {
   const [isSending, setIsSending] = useState(false);
   const [responseFeedback, setResponseFeedback] = useState({});
 const [copiedResponseId, setCopiedResponseId] = useState(null);
+
+  const [connectorStatus, setConnectorStatus] = useState({
+    "google-drive": false,
+  });
+  const [connectorLoading, setConnectorLoading] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [firebaseUser, setFirebaseUser] = useState(null);
+
+  const getFirebaseIdToken = async () => {
+  const user = firebaseUser || auth.currentUser;
+
+  if (!user) {
+    throw new Error("You must be logged in.");
+  }
+
+  return user.getIdToken();
+};
+
+const checkGoogleDriveStatus = async () => {
+  try {
+    const idToken = await getFirebaseIdToken();
+    const response = await fetch(
+      `${API_BASE_URL}/api/connectors/google/status`,
+      {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data?.message || "Unable to check Google Drive status."
+      );
+    }
+
+    const connected = Boolean(data.connected);
+
+    setConnectorStatus((previous) => ({
+      ...previous,
+      "google-drive": connected,
+    }));
+
+    return connected;
+  } catch (error) {
+    console.error("Google Drive status error:", error);
+    setConnectorStatus((previous) => ({
+      ...previous,
+      "google-drive": false,
+    }));
+    return false;
+  }
+};
+
+const handleGoogleDriveConnect = async () => {
+  try {
+    setConnectorLoading(true);
+    setConnectorNotice("Preparing Google Drive connection...");
+
+    const idToken = await getFirebaseIdToken();
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/connectors/google/authorize`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data?.message ||
+          "Unable to start Google Drive connection."
+      );
+    }
+
+    window.location.href = data.authorizationUrl;
+  } catch (error) {
+    console.error("Google Drive connection error:", error);
+    setConnectorNotice(
+      error.message || "Unable to connect Google Drive."
+    );
+    setConnectorLoading(false);
+  }
+};
+
+const handleGoogleDriveDisconnect = async () => {
+  try {
+    setConnectorLoading(true);
+    setConnectorNotice("Disconnecting Google Drive...");
+
+    const idToken = await getFirebaseIdToken();
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/connectors/google/disconnect`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data?.message || "Unable to disconnect Google Drive."
+      );
+    }
+
+    setConnectorStatus((previous) => ({
+      ...previous,
+      "google-drive": false,
+    }));
+    setConnectorNotice("Google Drive disconnected.");
+  } catch (error) {
+    console.error("Google Drive disconnect error:", error);
+    setConnectorNotice(
+      error.message || "Unable to disconnect Google Drive."
+    );
+  } finally {
+    setConnectorLoading(false);
+  }
+};
+
+const handleConnectorClick = (connector) => {
+  if (connector.id === "google-drive") {
+    if (connectorStatus["google-drive"]) {
+      handleGoogleDriveDisconnect();
+    } else {
+      handleGoogleDriveConnect();
+    }
+    return;
+  }
+
+  setConnectorNotice(
+    `${connector.name} connection will be available soon.`
+  );
+};
 
   const [theme, setTheme] = useState(() => {
     return (
@@ -172,6 +407,77 @@ const [copiedResponseId, setCopiedResponseId] = useState(null);
 
   /*
    * =========================================
+   * GOOGLE DRIVE CONNECTION STATUS
+   * =========================================
+   */
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log(
+        "Firebase auth state:",
+        user ? user.email : "No user"
+      );
+
+      setFirebaseUser(user);
+      setAuthReady(true);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!authReady) return;
+
+    let mounted = true;
+
+    const syncGoogleDriveStatus = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const connector = params.get("connector");
+      const status = params.get("status");
+
+      if (connector === "google-drive" && status === "connected") {
+        setConnectorsOpen(true);
+        setConnectorNotice("Google Drive connected successfully.");
+      } else if (connector === "google-drive" && status === "cancelled") {
+        setConnectorsOpen(true);
+        setConnectorNotice("Google Drive connection was cancelled.");
+      } else if (connector === "google-drive" && status === "error") {
+        setConnectorsOpen(true);
+        setConnectorNotice("Google Drive could not be connected.");
+      }
+
+      if (!firebaseUser) {
+        console.warn("Google Drive status check skipped: no Firebase user.");
+        if (connector || status) {
+          window.history.replaceState({}, document.title, "/chat");
+        }
+        return;
+      }
+
+      const connected = await checkGoogleDriveStatus();
+
+      if (!mounted) return;
+
+      if (connector === "google-drive" && status === "connected" && connected) {
+        setConnectorNotice(
+          "Google Drive connected successfully. Lawlite can now use your Drive documents."
+        );
+      }
+
+      if (connector || status) {
+        window.history.replaceState({}, document.title, "/chat");
+      }
+    };
+
+    syncGoogleDriveStatus();
+
+    return () => {
+      mounted = false;
+    };
+  }, [authReady, firebaseUser]);
+
+  /*
+   * =========================================
    * THEME
    * =========================================
    */
@@ -247,6 +553,8 @@ const [copiedResponseId, setCopiedResponseId] = useState(null);
         setSidebarOpen(false);
         setSearchOpen(false);
         setSettingsOpen(false);
+        setConnectorsOpen(false);
+setConnectorNotice("");
       }
     };
 
@@ -440,12 +748,56 @@ const [copiedResponseId, setCopiedResponseId] = useState(null);
 
   /*
    * =========================================
+   * GOOGLE DRIVE CONTEXT FOR SARVAM
+   * =========================================
+   */
+
+  const getGoogleDriveContext = async (query) => {
+    if (!connectorStatus["google-drive"] || !query?.trim()) {
+      return "";
+    }
+
+    try {
+      const idToken = await getFirebaseIdToken();
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/connectors/google/context`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ query: query.trim() }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        console.error(
+          "Google Drive context error:",
+          data?.message || "Unable to retrieve Drive context."
+        );
+        return "";
+      }
+
+      return data.context || "";
+    } catch (error) {
+      console.error("Google Drive context error:", error);
+      return "";
+    }
+  };
+
+  /*
+   * =========================================
    * SARVAM CHAT RESPONSE
    * =========================================
    */
 
   const getSarvamResponse = async (
-    conversation
+    conversation,
+    connectedContext = ""
   ) => {
     const response = await fetch(
       `${API_BASE_URL}/api/chat`,
@@ -456,6 +808,7 @@ const [copiedResponseId, setCopiedResponseId] = useState(null);
         },
         body: JSON.stringify({
           conversation,
+          connectedContext,
         }),
       }
     );
@@ -837,9 +1190,18 @@ const handleRegenerateResponse = async (
   setIsSending(true);
 
   try {
+    const latestUserMessage =
+      [...previousMessages]
+        .reverse()
+        .find((item) => item.role === "user")?.text || "";
+
+    const connectedContext =
+      await getGoogleDriveContext(latestUserMessage);
+
     const newAnswer =
       await getSarvamResponse(
-        conversation
+        conversation,
+        connectedContext
       );
 
     const updatedResponse = {
@@ -978,9 +1340,13 @@ const handleRegenerateResponse = async (
       Date.now() + 1;
 
     try {
+      const connectedContext =
+        await getGoogleDriveContext(trimmedMessage);
+
       const answer =
         await getSarvamResponse(
-          conversation
+          conversation,
+          connectedContext
         );
 
       const assistantMessage = {
@@ -1313,7 +1679,21 @@ const handleRegenerateResponse = async (
         ===================================== */}
 
         <div className="chat-sidebar-bottom">
+<button
+  type="button"
+  className="chat-sidebar-action"
+  onClick={() => {
+    setConnectorsOpen(true);
+    setConnectorNotice("");
+    setSidebarOpen(false);
+  }}
+>
+  <Cable size={16} />
 
+  <span>
+    Connectors
+  </span>
+</button>
   <button
     type="button"
     className="chat-sidebar-action logout"
@@ -2092,6 +2472,172 @@ const handleRegenerateResponse = async (
           </div>
         </div>
       )}
+      {/* =========================================
+    CONNECTORS MODAL
+========================================= */}
+
+{connectorsOpen && (
+  <div
+    className="chat-modal-backdrop"
+    onClick={() => {
+      setConnectorsOpen(false);
+      setConnectorNotice("");
+    }}
+  >
+    <div
+      className="chat-connectors-modal"
+      onClick={(event) =>
+        event.stopPropagation()
+      }
+    >
+
+      {/* HEADER */}
+
+      <div className="chat-modal-heading">
+        <div>
+          <Cable size={17} />
+
+          <strong>
+            Connectors
+          </strong>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            setConnectorsOpen(false);
+            setConnectorNotice("");
+          }}
+          aria-label="Close connectors"
+        >
+          <X size={17} />
+        </button>
+      </div>
+
+
+      {/* INTRO */}
+
+      <div className="chat-connectors-intro">
+        <h2>
+          Connect your tools.
+        </h2>
+
+        <p>
+          Bring information from the apps you
+          already use into your Lawlite workspace.
+        </p>
+      </div>
+
+
+      {/* CONNECTOR GROUPS */}
+
+      <div className="chat-connectors-list">
+
+        {connectorGroups.map((group) => (
+          <section
+            className="chat-connector-group"
+            key={group.title}
+          >
+
+            <div className="chat-connector-group-title">
+              {group.title}
+            </div>
+
+            <div className="chat-connector-grid">
+
+              {group.items.map((connector) => {
+                const Icon =
+                  connector.icon;
+
+                return (
+                  <button
+                    type="button"
+                    className={`chat-connector-card ${
+                      connectorStatus[connector.id]
+                        ? "connected"
+                        : ""
+                    }`}
+                    disabled={
+                      connectorLoading &&
+                      connector.id === "google-drive"
+                    }
+                    key={connector.id}
+                    onClick={() =>
+                      handleConnectorClick(
+                        connector
+                      )
+                    }
+                  >
+
+                    <div className="chat-connector-icon">
+                      <Icon size={22} />
+                    </div>
+
+                    <div className="chat-connector-info">
+                      <strong>
+                        {connector.name}
+                      </strong>
+
+                      <span>
+                        {connectorStatus[connector.id]
+                          ? "Connected — Lawlite can use this source"
+                          : connector.description}
+                      </span>
+                    </div>
+
+                    <span className="chat-connector-arrow">
+                      {connectorStatus[connector.id] ? (
+                        <Unplug size={18} />
+                      ) : (
+                        "→"
+                      )}
+                    </span>
+
+                  </button>
+                );
+              })}
+
+            </div>
+
+          </section>
+        ))}
+
+      </div>
+
+
+      {/* NOTICE */}
+
+      {connectorNotice && (
+        <div className="chat-connector-notice">
+          <span>
+            {connectorNotice}
+          </span>
+
+          <button
+            type="button"
+            onClick={() =>
+              setConnectorNotice("")
+            }
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
+
+      {/* FOOTER */}
+
+      <div className="chat-connectors-footer">
+        <Shield size={13} />
+
+        <span>
+          You control which services Lawlite can access.
+        </span>
+      </div>
+
+    </div>
+  </div>
+)}
 
     </main>
   );

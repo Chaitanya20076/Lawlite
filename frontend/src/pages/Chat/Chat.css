@@ -2960,3 +2960,583 @@ body,
     transition: none;
   }
 }
+/* =========================================================
+   CONNECTORS
+========================================================= */
+
+.chat-connectors-modal {
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 40px));
+
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
+
+  border: 1px solid
+    rgba(65, 48, 33, 0.12);
+
+  border-radius: 16px;
+
+  background:
+    rgba(250, 246, 239, 0.97);
+
+  box-shadow:
+    0 30px 90px
+      rgba(45, 31, 20, 0.16);
+
+  animation:
+    chatConnectorsEnter
+    0.28s
+    cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    )
+    both;
+}
+
+[data-theme="dark"]
+.chat-connectors-modal {
+  border-color:
+    rgba(255, 255, 255, 0.08);
+
+  background:
+    rgba(18, 17, 14, 0.98);
+
+  box-shadow:
+    0 30px 90px
+      rgba(0, 0, 0, 0.42);
+}
+
+@keyframes chatConnectorsEnter {
+  from {
+    opacity: 0;
+    transform:
+      translateY(12px)
+      scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+
+/* =========================================================
+   CONNECTOR INTRO
+========================================================= */
+
+.chat-connectors-intro {
+  padding: 4px 24px 20px;
+}
+
+.chat-connectors-intro h2 {
+  margin: 0 0 7px;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: -0.7px;
+
+  color: #2b241e;
+}
+
+.chat-connectors-intro p {
+  max-width: 520px;
+
+  color: #8a7f73;
+
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+[data-theme="dark"]
+.chat-connectors-intro h2 {
+  color: #f2ece1;
+}
+
+[data-theme="dark"]
+.chat-connectors-intro p {
+  color: #9b9387;
+}
+
+
+/* =========================================================
+   CONNECTOR LIST
+========================================================= */
+
+.chat-connectors-list {
+  flex: 1;
+
+  overflow-y: auto;
+
+  padding: 0 24px 10px;
+}
+
+.chat-connector-group {
+  margin-bottom: 20px;
+}
+
+.chat-connector-group:last-child {
+  margin-bottom: 4px;
+}
+
+.chat-connector-group-title {
+  margin-bottom: 8px;
+
+  color: #9a8f82;
+
+  font-size: 7px;
+  font-weight: 800;
+
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+[data-theme="dark"]
+.chat-connector-group-title {
+  color: #777167;
+}
+
+
+/* =========================================================
+   CONNECTOR GRID
+========================================================= */
+
+.chat-connector-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 8px;
+}
+
+
+/* =========================================================
+   CONNECTOR CARD
+========================================================= */
+
+.chat-connector-card {
+  position: relative;
+
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+
+  padding: 12px;
+
+  border: 1px solid
+    rgba(65, 48, 33, 0.09);
+
+  border-radius: 10px;
+
+  color: #342b23;
+
+  background:
+    rgba(255, 252, 247, 0.72);
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.chat-connector-card:hover {
+  border-color:
+    rgba(201, 120, 63, 0.3);
+
+  background:
+    rgba(255, 250, 243, 0.95);
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 7px 24px
+      rgba(65, 48, 33, 0.06);
+}
+
+[data-theme="dark"]
+.chat-connector-card {
+  border-color:
+    rgba(255, 255, 255, 0.07);
+
+  color: #eee8dd;
+
+  background:
+    rgba(255, 255, 255, 0.025);
+}
+
+[data-theme="dark"]
+.chat-connector-card:hover {
+  border-color:
+    rgba(210, 170, 58, 0.28);
+
+  background:
+    rgba(210, 170, 58, 0.045);
+
+  box-shadow:
+    0 7px 24px
+      rgba(0, 0, 0, 0.18);
+}
+
+
+/* =========================================================
+   CONNECTOR ICON
+========================================================= */
+
+.chat-connector-icon {
+  width: 38px;
+  height: 38px;
+
+  flex-shrink: 0;
+
+  display: grid;
+  place-items: center;
+
+  border: 1px solid
+    rgba(65, 48, 33, 0.08);
+
+  border-radius: 9px;
+
+  color: #6d6258;
+
+  background:
+    rgba(255, 255, 255, 0.72);
+}
+
+.chat-connector-card:hover
+.chat-connector-icon {
+  color: #b56a34;
+
+  border-color:
+    rgba(201, 120, 63, 0.14);
+}
+
+[data-theme="dark"]
+.chat-connector-icon {
+  border-color:
+    rgba(255, 255, 255, 0.07);
+
+  color: #bdb5a8;
+
+  background:
+    rgba(255, 255, 255, 0.035);
+}
+
+[data-theme="dark"]
+.chat-connector-card:hover
+.chat-connector-icon {
+  color: #d2aa3a;
+
+  border-color:
+    rgba(210, 170, 58, 0.15);
+}
+
+
+/* =========================================================
+   CONNECTOR INFO
+========================================================= */
+
+.chat-connector-info {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.chat-connector-info strong {
+  overflow: hidden;
+
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.chat-connector-info span {
+  overflow: hidden;
+
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
+  color: #9b9084;
+
+  font-size: 7px;
+}
+
+[data-theme="dark"]
+.chat-connector-info span {
+  color: #817a70;
+}
+
+
+/* =========================================================
+   CONNECTOR ARROW
+========================================================= */
+
+.chat-connector-arrow {
+  margin-left: auto;
+
+  flex-shrink: 0;
+
+  color: #b1a79b;
+
+  font-size: 13px;
+
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.chat-connector-card:hover
+.chat-connector-arrow {
+  color: #c9783f;
+
+  transform: translateX(2px);
+}
+
+[data-theme="dark"]
+.chat-connector-card:hover
+.chat-connector-arrow {
+  color: #d2aa3a;
+}
+
+
+/* =========================================================
+   CONNECTOR NOTICE
+========================================================= */
+
+.chat-connector-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  margin: 4px 24px 12px;
+  padding: 9px 11px;
+
+  border: 1px solid
+    rgba(201, 120, 63, 0.16);
+
+  border-radius: 8px;
+
+  color: #8a603d;
+
+  background:
+    rgba(201, 120, 63, 0.06);
+
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.chat-connector-notice button {
+  display: grid;
+  place-items: center;
+
+  flex-shrink: 0;
+
+  padding: 2px;
+
+  color: inherit;
+
+  background: transparent;
+
+  cursor: pointer;
+}
+
+[data-theme="dark"]
+.chat-connector-notice {
+  border-color:
+    rgba(210, 170, 58, 0.17);
+
+  color: #c7a967;
+
+  background:
+    rgba(210, 170, 58, 0.055);
+}
+
+
+/* =========================================================
+   CONNECTOR FOOTER
+========================================================= */
+
+.chat-connectors-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 6px;
+
+  padding: 13px 20px;
+
+  border-top: 1px solid
+    rgba(65, 48, 33, 0.08);
+
+  color: #a1988d;
+
+  font-size: 7px;
+
+  text-align: center;
+}
+
+.chat-connectors-footer svg {
+  flex-shrink: 0;
+
+  color: #b28a55;
+}
+
+[data-theme="dark"]
+.chat-connectors-footer {
+  border-color:
+    rgba(255, 255, 255, 0.06);
+
+  color: #777168;
+}
+
+
+/* =========================================================
+   CONNECTOR MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+  .chat-connectors-modal {
+    width: calc(100vw - 20px);
+
+    max-height:
+      calc(100vh - 24px);
+
+    border-radius: 14px;
+  }
+
+  .chat-connectors-intro {
+    padding:
+      2px 17px 17px;
+  }
+
+  .chat-connectors-intro h2 {
+    font-size: 22px;
+  }
+
+  .chat-connectors-list {
+    padding:
+      0 17px 8px;
+  }
+
+  .chat-connector-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-connector-card {
+    padding: 11px;
+  }
+
+  .chat-connectors-footer {
+    padding:
+      11px 15px;
+  }
+}
+
+
+/* =========================================================
+   CONNECTOR REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-connectors-modal {
+    animation: none;
+  }
+}
+/* =========================================================
+   CONNECTOR CONNECTION STATES
+========================================================= */
+
+.chat-connector-card.connected {
+  border-color: rgba(46, 160, 67, 0.5);
+  background: rgba(46, 160, 67, 0.08);
+  box-shadow:
+    0 0 0 1px rgba(46, 160, 67, 0.08),
+    0 8px 24px rgba(46, 160, 67, 0.06);
+}
+
+.chat-connector-card.connected:hover {
+  border-color: rgba(46, 160, 67, 0.7);
+  background: rgba(46, 160, 67, 0.12);
+  transform: translateY(-1px);
+}
+
+.chat-connector-card.connected .chat-connector-icon {
+  color: #2ea043;
+  background: rgba(46, 160, 67, 0.12);
+  border-color: rgba(46, 160, 67, 0.25);
+}
+
+.chat-connector-card.connected .chat-connector-info strong {
+  color: #2ea043;
+}
+
+.chat-connector-card.connected .chat-connector-info span {
+  color: rgba(46, 160, 67, 0.9);
+}
+
+.chat-connector-card.connected .chat-connector-arrow {
+  color: #2ea043;
+}
+
+.chat-connector-card:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+/* Dark mode */
+
+[data-theme="dark"] .chat-connector-card.connected {
+  border-color: rgba(46, 160, 67, 0.55);
+  background: rgba(46, 160, 67, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(46, 160, 67, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+[data-theme="dark"] .chat-connector-card.connected:hover {
+  background: rgba(46, 160, 67, 0.14);
+}
+
+[data-theme="dark"] .chat-connector-card.connected .chat-connector-info strong {
+  color: #3fb950;
+}
+
+[data-theme="dark"] .chat-connector-card.connected .chat-connector-info span {
+  color: rgba(63, 185, 80, 0.95);
+}
+
+[data-theme="dark"] .chat-connector-card.connected .chat-connector-icon {
+  color: #3fb950;
+  background: rgba(46, 160, 67, 0.14);
+  border-color: rgba(46, 160, 67, 0.3);
+}
+
+[data-theme="dark"] .chat-connector-card.connected .chat-connector-arrow {
+  color: #3fb950;
+}

@@ -6,7 +6,8 @@ import Contact from "./pages/Contact/Contact";
 import Home from "./pages/Home/Home";
 import Terms from "./pages/Terms/Terms";
 import Privacy from "./pages/Privacy/Privacy";
-
+import Login from "./pages/Login/Login";
+import Signup from "./pages/Signup/Signup";
 const App = () => {
   return (
     <>
@@ -21,6 +22,8 @@ const App = () => {
 
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
 
         </Routes>
       </main>

@@ -200,7 +200,16 @@ const Onboarding = () => {
   };
 
   const handleStart = () => {
-  console.log("Onboarding completed:", formData);
+  const onboardingData = {
+    name: formData.name.trim(),
+    dob: formData.dob,
+    interests: formData.interests,
+  };
+
+  localStorage.setItem(
+    "lawlite-onboarding",
+    JSON.stringify(onboardingData)
+  );
 
   navigate("/loading");
 };

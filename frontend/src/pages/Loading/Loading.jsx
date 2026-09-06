@@ -50,7 +50,7 @@ const Loading = () => {
       setIsFinishing(true);
 
       setTimeout(() => {
-        navigate("/");
+        navigate("/chat");
       }, 650);
     }, TOTAL_DURATION);
 

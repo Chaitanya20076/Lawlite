@@ -1,7 +1,8 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 
 import Navbar from "./components/Navbar/Navbar";
 import Footer from "./components/Footer/Footer";
+
 import Contact from "./pages/Contact/Contact";
 import Home from "./pages/Home/Home";
 import Terms from "./pages/Terms/Terms";
@@ -10,29 +11,39 @@ import Login from "./pages/Login/Login";
 import Signup from "./pages/Signup/Signup";
 import Onboarding from "./pages/Onboarding/Onboarding";
 import Loading from "./pages/Loading/Loading";
+import Chat from "./pages/Chat/Chat";
+
 const App = () => {
+  const location = useLocation();
+
+  // Full-screen application pages
+  const isAppPage =
+    location.pathname === "/loading" ||
+    location.pathname === "/chat";
+
   return (
     <>
-      <Navbar />
+      {!isAppPage && <Navbar />}
 
       <main>
         <Routes>
-
           <Route path="/" element={<Home />} />
 
           <Route path="/terms" element={<Terms />} />
-
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/contact" element={<Contact />} />
+
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/loading" element={<Loading />} />
 
+          <Route path="/onboarding" element={<Onboarding />} />
+
+          <Route path="/loading" element={<Loading />} />
+          <Route path="/chat" element={<Chat />} />
         </Routes>
       </main>
 
-      <Footer />
+      {!isAppPage && <Footer />}
     </>
   );
 };

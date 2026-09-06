@@ -2,7 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
-
+const chatRoutes = require("./routes/chatRoutes");
 require("./config/firebase");
 
 const authRoutes = require("./routes/authRoutes");
@@ -47,6 +47,7 @@ app.get("/api/health", (req, res) => {
 
 
 app.use("/api/auth", authRoutes);
+app.use("/api/chat", chatRoutes);
 
 
 // ==========================================

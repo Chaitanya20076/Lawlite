@@ -8,6 +8,8 @@ import Terms from "./pages/Terms/Terms";
 import Privacy from "./pages/Privacy/Privacy";
 import Login from "./pages/Login/Login";
 import Signup from "./pages/Signup/Signup";
+import Onboarding from "./pages/Onboarding/Onboarding";
+import Loading from "./pages/Loading/Loading";
 const App = () => {
   return (
     <>
@@ -24,6 +26,8 @@ const App = () => {
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/loading" element={<Loading />} />
 
         </Routes>
       </main>

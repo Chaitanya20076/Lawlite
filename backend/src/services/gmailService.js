@@ -341,117 +341,229 @@ const buildSearchTerms = (
 |--------------------------------------------------------------------------
 */
 
-const searchGmailMessages =
-  async ({
-    connector,
-    query,
-    maxResults = 5,
-  }) => {
-    const gmail =
-      createGmailClient(
-        connector
-      );
+const searchGmailMessages = async ({
+  connector,
+  query,
+  maxResults = 5,
+}) => {
+  const gmail = createGmailClient(connector);
 
-    const terms =
-      buildSearchTerms(
-        query
-      );
+  const terms = buildSearchTerms(query);
 
-    const searchQueries =
-      [];
+  /*
+  |--------------------------------------------------------------------------
+  | IMPORTANT
+  |--------------------------------------------------------------------------
+  | Do NOT send the entire natural-language question as one Gmail query.
+  |
+  | Example:
+  | "Search my Gmail for an email about my internship offer and tell me..."
+  |
+  | The useful search concepts are:
+  | internship
+  | offer
+  |
+  | Gmail would otherwise require too many words to match.
+  |--------------------------------------------------------------------------
+  */
 
-    /*
-     * Normal keyword search.
-     */
-    if (
-      terms.length > 0
-    ) {
+  const searchQueries = [];
+
+  /*
+  * Extract explicit quoted phrases.
+  */
+  const quoted =
+    String(query)
+      .match(/"([^"]+)"/g)
+      ?.map(
+        (item) =>
+          item.slice(1, -1).trim()
+      )
+      .filter(Boolean) || [];
+
+  /*
+  * Search quoted phrases first.
+  */
+  quoted.slice(0, 3).forEach(
+    (phrase) => {
       searchQueries.push(
-        terms.join(" ")
+        `"${phrase}"`
       );
     }
+  );
 
-    /*
-     * Preserve quoted phrases
-     * when the user explicitly supplied them.
-     */
-    const quoted =
-      String(query)
-        .match(
-          /"([^"]+)"/g
-        )
-        ?.map(
-          (item) =>
-            item
-              .slice(1, -1)
-              .trim()
-        )
-        .filter(Boolean);
-
-    if (
-      quoted?.length
-    ) {
-      searchQueries.unshift(
-        quoted
-          .slice(0, 2)
-          .join(" ")
-      );
+  /*
+  * Search individual meaningful terms.
+  *
+  * This is intentionally MUCH broader than:
+  * terms.join(" ")
+  */
+  terms.slice(0, 8).forEach(
+    (term) => {
+      searchQueries.push(term);
     }
+  );
 
-    /*
-     * Fallback.
-     */
-    if (
-      searchQueries.length ===
-      0
-    ) {
-      searchQueries.push(
-        "in:anywhere"
+  /*
+  * Also try a Gmail OR query using the most
+  * meaningful terms.
+  *
+  * Example:
+  * {internship offer}
+  */
+  const usefulTerms =
+    terms
+      .filter(
+        (term) =>
+          ![
+            "gmail",
+            "email",
+            "emails",
+            "mail",
+            "mails",
+            "search",
+            "find",
+            "tell",
+            "important",
+            "dates",
+            "mentioned",
+            "sender",
+            "company",
+            "name",
+            "role",
+          ].includes(term)
+      )
+      .slice(0, 5);
+
+  if (
+    usefulTerms.length > 0
+  ) {
+    searchQueries.push(
+      `{${usefulTerms.join(
+        " "
+      )}}`
+    );
+  }
+
+  /*
+  * Final fallback.
+  */
+  if (
+    searchQueries.length === 0
+  ) {
+    searchQueries.push(
+      "in:anywhere"
+    );
+  }
+
+  console.log(
+    "📧 Gmail search queries:",
+    searchQueries
+  );
+
+  /*
+  |--------------------------------------------------------------------------
+  | SEARCH + DEDUPLICATE
+  |--------------------------------------------------------------------------
+  */
+
+  const messageMap =
+    new Map();
+
+  let lastError = null;
+
+  for (
+    const gmailQuery of searchQueries
+  ) {
+    try {
+      console.log(
+        `📧 Gmail query: ${gmailQuery}`
       );
-    }
 
-    let messages = [];
-    let lastError = null;
+      const result =
+        await gmail.users.messages.list(
+          {
+            userId:
+              GMAIL_USER,
 
-    for (
-      const gmailQuery of searchQueries
-    ) {
-      try {
-        const result =
-          await gmail.users.messages.list(
-            {
-              userId: GMAIL_USER,
-              q: gmailQuery,
-              maxResults,
-            }
+            q:
+              gmailQuery,
+
+            maxResults:
+              Math.max(
+                maxResults,
+                10
+              ),
+          }
+        );
+
+      const foundMessages =
+        result?.data?.messages ||
+        [];
+
+      console.log(
+        `📧 Results for "${gmailQuery}": ${foundMessages.length}`
+      );
+
+      for (
+        const message of foundMessages
+      ) {
+        if (
+          message?.id &&
+          !messageMap.has(
+            message.id
+          )
+        ) {
+          messageMap.set(
+            message.id,
+            message
           );
-
-        messages =
-          result?.data?.messages ||
-          [];
+        }
 
         if (
-          messages.length > 0
+          messageMap.size >=
+          maxResults
         ) {
           break;
         }
-      } catch (error) {
-        lastError = error;
       }
-    }
 
-    if (
-      lastError &&
-      messages.length === 0
-    ) {
-      throw lastError;
-    }
+      if (
+        messageMap.size >=
+        maxResults
+      ) {
+        break;
+      }
+    } catch (error) {
+      lastError = error;
 
-    return {
-      gmail,
-      messages,
-    };
+      console.error(
+        `Gmail search error for "${gmailQuery}":`,
+        error
+      );
+    }
+  }
+
+  if (
+    lastError &&
+    messageMap.size === 0
+  ) {
+    throw lastError;
+  }
+
+  const messages =
+    Array.from(
+      messageMap.values()
+    ).slice(
+      0,
+      maxResults
+    );
+
+  return {
+    gmail,
+    messages,
   };
+};
 
 /*
 |--------------------------------------------------------------------------

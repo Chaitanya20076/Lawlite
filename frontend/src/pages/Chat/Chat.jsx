@@ -181,20 +181,51 @@ const [connectorNotice, setConnectorNotice] = useState("");
 const [copiedResponseId, setCopiedResponseId] = useState(null);
 
   const [connectorStatus, setConnectorStatus] = useState({
-    "google-drive": false,
-    dropbox: false,
-    notion: false,
-    gmail: false,
-  });
+  "google-drive": false,
+  dropbox: false,
+  notion: false,
+  gmail: false,
+  github: false,
+});
   const [connectorLoading, setConnectorLoading] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [firebaseUser, setFirebaseUser] = useState(null);
 
   const getFirebaseIdToken = async () => {
-  const user = firebaseUser || auth.currentUser;
+  /*
+   * Prefer the Firebase auth instance directly.
+   * This avoids relying only on React state, which may
+   * briefly still be null immediately after page load.
+   */
+  let user = auth.currentUser;
+
+  /*
+   * Fall back to the React state if Firebase has already
+   * resolved the authenticated user there.
+   */
+  if (!user) {
+    user = firebaseUser;
+  }
+
+  /*
+   * If auth state has not resolved yet, wait for it once.
+   */
+  if (!user) {
+    user = await new Promise((resolve) => {
+      const unsubscribe = onAuthStateChanged(
+        auth,
+        (currentUser) => {
+          unsubscribe();
+          resolve(currentUser);
+        }
+      );
+    });
+  }
 
   if (!user) {
-    throw new Error("You must be logged in.");
+    throw new Error(
+      "You must be logged in to connect a service."
+    );
   }
 
   return user.getIdToken();
@@ -667,7 +698,182 @@ const handleGmailDisconnect = async () => {
     setConnectorLoading(false);
   }
 };
+const checkGithubStatus = async () => {
+  try {
+    const idToken =
+      await getFirebaseIdToken();
 
+    const response =
+      await fetch(
+        `${API_BASE_URL}/api/connectors/github/status`,
+        {
+          headers: {
+            Authorization:
+              `Bearer ${idToken}`,
+          },
+        }
+      );
+
+    const data =
+      await response.json();
+
+    if (
+      !response.ok ||
+      !data.success
+    ) {
+      throw new Error(
+        data?.message ||
+          "Unable to check GitHub status."
+      );
+    }
+
+    const connected =
+      Boolean(data.connected);
+
+    setConnectorStatus(
+      (previous) => ({
+        ...previous,
+        github: connected,
+      })
+    );
+
+    return connected;
+  } catch (error) {
+    console.error(
+      "GitHub status error:",
+      error
+    );
+
+    setConnectorStatus(
+      (previous) => ({
+        ...previous,
+        github: false,
+      })
+    );
+
+    return false;
+  }
+};
+
+
+const handleGithubConnect =
+  async () => {
+    try {
+      setConnectorLoading(true);
+
+      setConnectorNotice(
+        "Preparing GitHub connection..."
+      );
+
+      const idToken =
+        await getFirebaseIdToken();
+
+      const response =
+        await fetch(
+          `${API_BASE_URL}/api/connectors/github/authorize`,
+          {
+            method: "GET",
+
+            headers: {
+              Authorization:
+                `Bearer ${idToken}`,
+            },
+          }
+        );
+
+      const data =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data?.message ||
+            "Unable to start GitHub connection."
+        );
+      }
+
+      window.location.href =
+        data.authorizationUrl;
+    } catch (error) {
+      console.error(
+        "GitHub connection error:",
+        error
+      );
+
+      setConnectorNotice(
+        error.message ||
+          "Unable to connect GitHub."
+      );
+
+      setConnectorLoading(false);
+    }
+  };
+
+
+const handleGithubDisconnect =
+  async () => {
+    try {
+      setConnectorLoading(true);
+
+      setConnectorNotice(
+        "Disconnecting GitHub..."
+      );
+
+      const idToken =
+        await getFirebaseIdToken();
+
+      const response =
+        await fetch(
+          `${API_BASE_URL}/api/connectors/github/disconnect`,
+          {
+            method: "DELETE",
+
+            headers: {
+              Authorization:
+                `Bearer ${idToken}`,
+            },
+          }
+        );
+
+      const data =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data?.message ||
+            "Unable to disconnect GitHub."
+        );
+      }
+
+      setConnectorStatus(
+        (previous) => ({
+          ...previous,
+          github: false,
+        })
+      );
+
+      setConnectorNotice(
+        "GitHub disconnected."
+      );
+    } catch (error) {
+      console.error(
+        "GitHub disconnect error:",
+        error
+      );
+
+      setConnectorNotice(
+        error.message ||
+          "Unable to disconnect GitHub."
+      );
+    } finally {
+      setConnectorLoading(false);
+    }
+  };
 const handleConnectorClick = (connector) => {
   if (connector.id === "google-drive") {
     if (connectorStatus["google-drive"]) {
@@ -704,6 +910,14 @@ const handleConnectorClick = (connector) => {
     }
     return;
   }
+  if (connector.id === "github") {
+  if (connectorStatus.github) {
+    handleGithubDisconnect();
+  } else {
+    handleGithubConnect();
+  }
+  return;
+}
 
   setConnectorNotice(
     `${connector.name} connection will be available soon.`
@@ -846,15 +1060,54 @@ const handleConnectorClick = (connector) => {
       } else if (connector === "notion" && status === "error") {
         setConnectorsOpen(true);
         setConnectorNotice("Notion could not be connected.");
-      } else if (connector === "gmail" && status === "connected") {
+      } else if (
+        connector === "gmail" &&
+        status === "connected"
+      ) {
         setConnectorsOpen(true);
-        setConnectorNotice("Gmail connected successfully.");
-      } else if (connector === "gmail" && status === "cancelled") {
+        setConnectorNotice(
+          "Gmail connected successfully."
+        );
+      } else if (
+        connector === "gmail" &&
+        status === "cancelled"
+      ) {
         setConnectorsOpen(true);
-        setConnectorNotice("Gmail connection was cancelled.");
-      } else if (connector === "gmail" && status === "error") {
+        setConnectorNotice(
+          "Gmail connection was cancelled."
+        );
+      } else if (
+        connector === "gmail" &&
+        status === "error"
+      ) {
         setConnectorsOpen(true);
-        setConnectorNotice("Gmail could not be connected.");
+        setConnectorNotice(
+          "Gmail could not be connected."
+        );
+      } else if (
+        connector === "github" &&
+        status === "connected"
+      ) {
+        setConnectorsOpen(true);
+        setConnectorNotice(
+          "GitHub connected successfully."
+        );
+      } else if (
+        connector === "github" &&
+        status === "cancelled"
+      ) {
+        setConnectorsOpen(true);
+        setConnectorNotice(
+          "GitHub connection was cancelled."
+        );
+      } else if (
+        connector === "github" &&
+        status === "error"
+      ) {
+        setConnectorsOpen(true);
+        setConnectorNotice(
+          "GitHub could not be connected."
+        );
       }
 
       if (!firebaseUser) {
@@ -869,6 +1122,8 @@ const handleConnectorClick = (connector) => {
       const dropboxConnected = await checkDropboxStatus();
       const notionConnected = await checkNotionStatus();
       const gmailConnected = await checkGmailStatus();
+      const githubConnected =
+  await checkGithubStatus();
 
       if (!mounted) return;
 
@@ -902,7 +1157,7 @@ const handleConnectorClick = (connector) => {
         );
       }
 
-      if (
+            if (
         connector === "gmail" &&
         status === "connected" &&
         gmailConnected
@@ -912,10 +1167,25 @@ const handleConnectorClick = (connector) => {
         );
       }
 
+      if (
+        connector === "github" &&
+        status === "connected" &&
+        githubConnected
+      ) {
+        setConnectorNotice(
+          "GitHub connected successfully. Lawlite can now search your repositories."
+        );
+      }
+
       if (connector || status) {
-        window.history.replaceState({}, document.title, "/chat");
+        window.history.replaceState(
+          {},
+          document.title,
+          "/chat"
+        );
       }
     };
+    
 
     syncConnectorStatus();
 
@@ -3060,7 +3330,9 @@ const handleRegenerateResponse = async (
                         connector.id === "google-drive" ||
                         connector.id === "dropbox" ||
                         connector.id === "notion" ||
-                        connector.id === "gmail"
+                        connector.id === "gmail" ||
+                        connector.id === "github"
+                        
                       )
                     }
                     key={connector.id}

@@ -15,6 +15,8 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "firebase-admin": "^14.3.0",
-    "googleapis": "^178.0.0"
+    "googleapis": "^178.0.0",
+    "mammoth": "^1.12.2",
+    "pdf-parse": "^1.1.1"
   }
 }

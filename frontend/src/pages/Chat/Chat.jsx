@@ -799,19 +799,68 @@ setConnectorNotice("");
     conversation,
     connectedContext = ""
   ) => {
-    const response = await fetch(
-      `${API_BASE_URL}/api/chat`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          conversation,
-          connectedContext,
-        }),
-      }
-    );
+    const idToken = await getFirebaseIdToken();
+
+const response = await fetch(
+  `${API_BASE_URL}/api/chat`,
+  {
+    method: "POST",
+
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${idToken}`,
+    },
+
+    body: JSON.stringify({
+      conversation,
+    }),
+  }
+);
+/**
+ * Convert the Drive tree into a clean human-readable
+ * response for Lawlite.
+ */
+const formatDriveTree = (
+  node,
+  depth = 0
+) => {
+  if (!node) {
+    return "";
+  }
+
+  const indent = "  ".repeat(depth);
+
+  let output = "";
+
+  if (node.type === "folder") {
+    if (depth === 0) {
+      output += `📁 ${node.name}\n`;
+    } else {
+      output += `${indent}📁 ${node.name}\n`;
+    }
+  } else {
+    output += `${indent}📄 ${node.name}`;
+
+    if (node.mimeType) {
+      output += ` — ${node.mimeType}`;
+    }
+
+    output += "\n";
+
+    return output;
+  }
+
+  if (Array.isArray(node.children)) {
+    for (const child of node.children) {
+      output += formatDriveTree(
+        child,
+        depth + 1
+      );
+    }
+  }
+
+  return output;
+};
 
     const data = await response.json();
 

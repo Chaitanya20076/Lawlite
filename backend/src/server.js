@@ -2,11 +2,13 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+
 const notionRoutes = require("./routes/notionRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const authRoutes = require("./routes/authRoutes");
 const connectorRoutes = require("./routes/connectorRoutes");
 const dropboxRoutes = require("./routes/dropboxRoutes");
+const gmailRoutes = require("./routes/gmailRoutes");
 
 require("./config/firebase");
 
@@ -74,10 +76,25 @@ app.use(
   "/api/connectors/dropbox",
   dropboxRoutes
 );
+
+// ==========================================
+// NOTION CONNECTOR
+// ==========================================
+
 app.use(
   "/api/connectors/notion",
   notionRoutes
 );
+
+// ==========================================
+// GMAIL CONNECTOR
+// ==========================================
+
+app.use(
+  "/api/connectors/gmail",
+  gmailRoutes
+);
+
 // ==========================================
 // SERVER
 // ==========================================

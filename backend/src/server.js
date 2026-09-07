@@ -2,7 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
-
+const notionRoutes = require("./routes/notionRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const authRoutes = require("./routes/authRoutes");
 const connectorRoutes = require("./routes/connectorRoutes");
@@ -74,7 +74,10 @@ app.use(
   "/api/connectors/dropbox",
   dropboxRoutes
 );
-
+app.use(
+  "/api/connectors/notion",
+  notionRoutes
+);
 // ==========================================
 // SERVER
 // ==========================================

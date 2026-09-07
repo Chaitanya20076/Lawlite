@@ -26,6 +26,10 @@ const {
 } = require("../services/dropboxService");
 
 const {
+  getRelevantNotionContext,
+} = require("../services/notionService");
+
+const {
   requireAuth,
 } = require("../middleware/authMiddleware");
 
@@ -392,6 +396,86 @@ const getGoogleDriveConnector = async (uid) => {
 };
 
 
+/*
+|--------------------------------------------------------------------------
+| GET USER'S NOTION CONNECTOR
+|--------------------------------------------------------------------------
+*/
+
+const getNotionConnector = async (uid) => {
+  if (!uid) {
+    return null;
+  }
+
+  const connectorRef = db
+    .collection("users")
+    .doc(uid)
+    .collection("connectors")
+    .doc("notion");
+
+  const snapshot =
+    await connectorRef.get();
+
+  if (!snapshot.exists) {
+    return null;
+  }
+
+  const data =
+    snapshot.data();
+
+  if (!data?.accessToken) {
+    return null;
+  }
+
+  return data;
+};
+
+
+/*
+|--------------------------------------------------------------------------
+| DECIDE WHETHER TO SEARCH NOTION
+|--------------------------------------------------------------------------
+*/
+
+const shouldSearchNotion = (
+  message = ""
+) => {
+  const text =
+    String(message)
+      .toLowerCase()
+      .trim();
+
+  if (!text) {
+    return false;
+  }
+
+  const notionTriggers = [
+    "notion",
+    "my notion",
+    "in notion",
+    "from notion",
+    "my notion page",
+    "my notion pages",
+    "my notion document",
+    "my notion documents",
+    "my notion notes",
+    "my notion note",
+    "according to my notion",
+    "according to the notion",
+    "what does my notion",
+    "check my notion",
+    "read my notion",
+    "find my notion",
+    "look at my notion",
+    "search my notion",
+  ];
+
+  return notionTriggers.some(
+    (trigger) =>
+      text.includes(trigger)
+  );
+};
+
 
 /*
 |--------------------------------------------------------------------------
@@ -416,7 +500,9 @@ const mentionsDropbox = (message = "") => {
  * Decide whether the user wants to browse their Dropbox.
  */
 const shouldBrowseDropbox = (message = "") => {
-  const text = String(message).toLowerCase().trim();
+  const text = String(message)
+    .toLowerCase()
+    .trim();
 
   if (!mentionsDropbox(text)) {
     return false;
@@ -446,9 +532,14 @@ const shouldBrowseDropbox = (message = "") => {
  * Decide whether the user is asking about a specific Dropbox folder.
  */
 const shouldUseDropboxFolder = (message = "") => {
-  const text = String(message).toLowerCase().trim();
+  const text = String(message)
+    .toLowerCase()
+    .trim();
 
-  if (!mentionsDropbox(text) || !text.includes("folder")) {
+  if (
+    !mentionsDropbox(text) ||
+    !text.includes("folder")
+  ) {
     return false;
   }
 
@@ -462,28 +553,42 @@ const shouldUseDropboxFolder = (message = "") => {
     "from",
     "show",
     "what",
-  ].some((trigger) => text.includes(trigger));
+  ].some(
+    (trigger) =>
+      text.includes(trigger)
+  );
 };
 
 
 /**
  * Extract a Dropbox folder name from natural language.
  */
-const extractDropboxFolderName = (message = "") => {
+const extractDropboxFolderName = (
+  message = ""
+) => {
   const text = String(message).trim();
 
   const patterns = [
     /\bin\s+(?:my\s+)?["']?([^"'?.]+?)["']?\s+folder\b/i,
+
     /\bfrom\s+(?:my\s+)?["']?([^"'?.]+?)["']?\s+folder\b/i,
+
     /\bcheck\s+(?:my\s+)?["']?([^"'?.]+?)["']?\s+folder\b/i,
+
     /\binside\s+(?:my\s+)?["']?([^"'?.]+?)["']?\s+folder\b/i,
+
     /\bthe\s+["']?([^"'?.]+?)["']?\s+folder\b/i,
   ];
 
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
+  for (
+    const pattern of patterns
+  ) {
+    const match =
+      text.match(pattern);
 
-    if (match?.[1]) {
+    if (
+      match?.[1]
+    ) {
       return match[1]
         .trim()
         .replace(/\s+/g, " ");
@@ -505,17 +610,29 @@ const formatDropboxTree = (
     return "";
   }
 
-  const indent = "  ".repeat(depth);
+  const indent =
+    "  ".repeat(depth);
 
-  if (node.type === "folder") {
-    let output = `${indent}📁 ${node.name}\n`;
+  if (
+    node.type === "folder"
+  ) {
+    let output =
+      `${indent}📁 ${node.name}\n`;
 
-    if (Array.isArray(node.children)) {
-      for (const child of node.children) {
-        output += formatDropboxTree(
-          child,
-          depth + 1
-        );
+    if (
+      Array.isArray(
+        node.children
+      )
+    ) {
+      for (
+        const child of
+          node.children
+      ) {
+        output +=
+          formatDropboxTree(
+            child,
+            depth + 1
+          );
       }
     }
 
@@ -536,32 +653,49 @@ const formatDropboxFolderContents = (
   let output =
     `📁 ${folder.name}\n\n`;
 
-  const folders = contents.filter(
-    (item) =>
-      item.type === "folder"
-  );
+  const folders =
+    contents.filter(
+      (item) =>
+        item.type ===
+        "folder"
+    );
 
-  const files = contents.filter(
-    (item) =>
-      item.type === "file"
-  );
+  const files =
+    contents.filter(
+      (item) =>
+        item.type ===
+        "file"
+    );
 
-  if (folders.length > 0) {
-    output += "Folders:\n";
+  if (
+    folders.length > 0
+  ) {
+    output +=
+      "Folders:\n";
 
-    folders.forEach((item) => {
-      output += `- 📁 ${item.name}\n`;
-    });
+    folders.forEach(
+      (item) => {
+        output +=
+          `- 📁 ${item.name}\n`;
+      }
+    );
 
-    output += "\n";
+    output +=
+      "\n";
   }
 
-  if (files.length > 0) {
-    output += "Files:\n";
+  if (
+    files.length > 0
+  ) {
+    output +=
+      "Files:\n";
 
-    files.forEach((item) => {
-      output += `- 📄 ${item.name}\n`;
-    });
+    files.forEach(
+      (item) => {
+        output +=
+          `- 📄 ${item.name}\n`;
+      }
+    );
   }
 
   if (
@@ -579,16 +713,19 @@ const formatDropboxFolderContents = (
 /**
  * Get the user's Dropbox connector from Firestore.
  */
-const getDropboxConnector = async (uid) => {
+const getDropboxConnector = async (
+  uid
+) => {
   if (!uid) {
     return null;
   }
 
-  const connectorRef = db
-    .collection("users")
-    .doc(uid)
-    .collection("connectors")
-    .doc("dropbox");
+  const connectorRef =
+    db
+      .collection("users")
+      .doc(uid)
+      .collection("connectors")
+      .doc("dropbox");
 
   const snapshot =
     await connectorRef.get();
@@ -597,7 +734,8 @@ const getDropboxConnector = async (uid) => {
     return null;
   }
 
-  const data = snapshot.data();
+  const data =
+    snapshot.data();
 
   if (
     !data?.accessToken &&
@@ -616,131 +754,160 @@ const getDropboxConnector = async (uid) => {
  * Phase 1 supports PDFs and common plain-text formats.
  * Other formats are skipped rather than breaking normal chat.
  */
-const extractDropboxFileText = async ({
-  buffer,
-  fileName = "",
-} = {}) => {
-  if (!buffer || !Buffer.isBuffer(buffer)) {
-    return null;
-  }
+const extractDropboxFileText =
+  async ({
+    buffer,
+    fileName = "",
+  } = {}) => {
+    if (
+      !buffer ||
+      !Buffer.isBuffer(buffer)
+    ) {
+      return null;
+    }
 
-  const extension =
-    String(fileName)
-      .toLowerCase()
-      .split(".")
-      .pop();
+    const extension =
+      String(fileName)
+        .toLowerCase()
+        .split(".")
+        .pop();
 
-  if (
-    extension === "pdf"
-  ) {
-    if (!pdfParse) {
-      throw new Error(
-        "PDF extraction requires pdf-parse."
+    if (
+      extension === "pdf"
+    ) {
+      if (!pdfParse) {
+        throw new Error(
+          "PDF extraction requires pdf-parse."
+        );
+      }
+
+      const parsed =
+        await pdfParse(
+          buffer
+        );
+
+      return (
+        parsed?.text?.trim() ||
+        null
       );
     }
 
-    const parsed =
-      await pdfParse(buffer);
+    const textExtensions = [
+      "txt",
+      "md",
+      "csv",
+      "json",
+      "js",
+      "jsx",
+      "ts",
+      "tsx",
+      "css",
+      "html",
+      "xml",
+      "log",
+    ];
 
-    return (
-      parsed?.text?.trim() ||
-      null
-    );
-  }
+    if (
+      textExtensions.includes(
+        extension
+      )
+    ) {
+      return buffer
+        .toString("utf8")
+        .trim();
+    }
 
-  const textExtensions = [
-    "txt",
-    "md",
-    "csv",
-    "json",
-    "js",
-    "jsx",
-    "ts",
-    "tsx",
-    "css",
-    "html",
-    "xml",
-    "log",
-  ];
-
-  if (
-    textExtensions.includes(
-      extension
-    )
-  ) {
-    return buffer
-      .toString("utf8")
-      .trim();
-  }
-
-  return null;
-};
+    return null;
+  };
 
 
 /**
  * Search Dropbox, download relevant readable files,
  * and prepare a compact context for Sarvam.
  */
-const getRelevantDropboxContext = async ({
-  connector,
-  query,
-  maxFiles = 3,
-  maxCharsPerFile = 12000,
-} = {}) => {
-  if (!connector || !query?.trim()) {
-    return {
-      context: null,
-      sources: [],
-    };
-  }
+const getRelevantDropboxContext =
+  async ({
+    connector,
+    query,
+    maxFiles = 3,
+    maxCharsPerFile = 12000,
+  } = {}) => {
+    if (
+      !connector ||
+      !query?.trim()
+    ) {
+      return {
+        context: null,
+        sources: [],
+      };
+    }
 
-  const files =
-    await findRelevantDropboxFiles({
-      accessToken:
-        connector.accessToken,
-      refreshToken:
-        connector.refreshToken,
-      query,
-      maxFiles,
-    });
+    const files =
+      await findRelevantDropboxFiles({
+        accessToken:
+          connector.accessToken,
 
-  const sources = [];
-  const contextParts = [];
+        refreshToken:
+          connector.refreshToken,
 
-  for (const file of files) {
-    try {
-      const downloaded =
-        await downloadDropboxFile({
-          accessToken:
-            connector.accessToken,
-          refreshToken:
-            connector.refreshToken,
-          path: file.path,
-        });
+        query,
 
-      const text =
-        await extractDropboxFileText({
-          buffer:
-            downloaded.buffer,
-          fileName:
-            file.name,
-        });
-
-      sources.push({
-        id: file.id,
-        name: file.name,
-        path: file.path,
-        size: file.size || null,
-        modifiedTime:
-          file.modifiedTime || null,
+        maxFiles,
       });
 
-      if (!text) {
-        continue;
-      }
+    const sources = [];
+    const contextParts = [];
 
-      contextParts.push(
-        `DROPBOX SOURCE
+    for (
+      const file of files
+    ) {
+      try {
+        const downloaded =
+          await downloadDropboxFile({
+            accessToken:
+              connector.accessToken,
+
+            refreshToken:
+              connector.refreshToken,
+
+            path:
+              file.path,
+          });
+
+        const text =
+          await extractDropboxFileText({
+            buffer:
+              downloaded.buffer,
+
+            fileName:
+              file.name,
+          });
+
+        sources.push({
+          id:
+            file.id,
+
+          name:
+            file.name,
+
+          path:
+            file.path,
+
+          size:
+            file.size ||
+            null,
+
+          modifiedTime:
+            file.modifiedTime ||
+            null,
+        });
+
+        if (!text) {
+          continue;
+        }
+
+        contextParts.push(
+          `DROPBOX SOURCE
 Name: ${file.name}
 Path: ${file.path}
 Content:
@@ -748,23 +915,29 @@ ${text.slice(
   0,
   maxCharsPerFile
 )}`
-      );
-    } catch (fileError) {
-      console.error(
-        `Dropbox file read error for "${file.name}":`,
+        );
+      } catch (
         fileError
-      );
+      ) {
+        console.error(
+          `Dropbox file read error for "${file.name}":`,
+          fileError
+        );
+      }
     }
-  }
 
-  return {
-    context:
-      contextParts.length > 0
-        ? contextParts.join("\n\n---\n\n")
-        : null,
-    sources,
+    return {
+      context:
+        contextParts.length > 0
+          ? contextParts.join(
+              "\n\n---\n\n"
+            )
+          : null,
+
+      sources,
+    };
   };
-};
+
 
 /*
 |--------------------------------------------------------------------------
@@ -788,7 +961,11 @@ router.post(
       |--------------------------------------------------------------------------
       */
 
-      if (!Array.isArray(conversation)) {
+      if (
+        !Array.isArray(
+          conversation
+        )
+      ) {
         return res.status(400).json({
           success: false,
           message:
@@ -796,7 +973,9 @@ router.post(
         });
       }
 
-      if (conversation.length === 0) {
+      if (
+        conversation.length === 0
+      ) {
         return res.status(400).json({
           success: false,
           message:
@@ -805,30 +984,46 @@ router.post(
       }
 
 
+      /*
+      |--------------------------------------------------------------------------
+      | CLEAN CONVERSATION
+      |--------------------------------------------------------------------------
+      */
+
       const cleanConversation =
         conversation
           .filter(
             (message) =>
               message &&
-              ["user", "assistant"].includes(
+              [
+                "user",
+                "assistant",
+              ].includes(
                 message.role
               ) &&
               typeof message.content ===
                 "string"
           )
-          .map((message) => ({
-            role: message.role,
+          .map(
+            (message) => ({
+              role:
+                message.role,
 
-            content:
-              message.content.trim(),
-          }))
+              content:
+                message.content.trim(),
+            })
+          )
           .filter(
             (message) =>
-              message.content.length > 0
+              message.content.length >
+              0
           );
 
 
-      if (cleanConversation.length === 0) {
+      if (
+        cleanConversation.length ===
+        0
+      ) {
         return res.status(400).json({
           success: false,
           message:
@@ -844,14 +1039,20 @@ router.post(
       */
 
       const latestUserMessage =
-        [...cleanConversation]
+        [
+          ...cleanConversation,
+        ]
           .reverse()
           .find(
             (message) =>
-              message.role === "user"
+              message.role ===
+              "user"
           );
 
-      if (!latestUserMessage) {
+
+      if (
+        !latestUserMessage
+      ) {
         return res.status(400).json({
           success: false,
           message:
@@ -876,12 +1077,21 @@ router.post(
           await getGoogleDriveConnector(
             req.user?.uid
           );
-      } catch (connectorError) {
+      } catch (
+        connectorError
+      ) {
         console.error(
           "Google Drive connector lookup error:",
           connectorError
         );
       }
+
+
+      /*
+      |--------------------------------------------------------------------------
+      | DROPBOX CONNECTOR
+      |--------------------------------------------------------------------------
+      */
 
       let dropboxConnector = null;
 
@@ -890,7 +1100,9 @@ router.post(
           await getDropboxConnector(
             req.user?.uid
           );
-      } catch (connectorError) {
+      } catch (
+        connectorError
+      ) {
         console.error(
           "Dropbox connector lookup error:",
           connectorError
@@ -900,22 +1112,52 @@ router.post(
 
       /*
       |--------------------------------------------------------------------------
-      | DROPBOX BROWSE
+      | NOTION CONNECTOR
       |--------------------------------------------------------------------------
-      *
-      * Examples:
-      *
-      * "List my Dropbox files"
-      * "Show my Dropbox folders"
       */
 
-      if (shouldBrowseDropbox(userMessage)) {
+      let notionConnector = null;
+
+      try {
+        notionConnector =
+          await getNotionConnector(
+            req.user?.uid
+          );
+      } catch (
+        connectorError
+      ) {
+        console.error(
+          "Notion connector lookup error:",
+          connectorError
+        );
+      }
+
+
+      /*
+      |--------------------------------------------------------------------------
+      | DROPBOX BROWSE
+      |--------------------------------------------------------------------------
+      |
+      | Examples:
+      |
+      | "List my Dropbox files"
+      | "Show my Dropbox folders"
+      |
+      */
+
+      if (
+        shouldBrowseDropbox(
+          userMessage
+        )
+      ) {
         console.log(
           "📦 Lawlite Dropbox browse:",
           userMessage
         );
 
-        if (!dropboxConnector) {
+        if (
+          !dropboxConnector
+        ) {
           return res.status(400).json({
             success: false,
             message:
@@ -928,9 +1170,12 @@ router.post(
             await listDropboxTree({
               accessToken:
                 dropboxConnector.accessToken,
+
               refreshToken:
                 dropboxConnector.refreshToken,
-              maxEntries: 500,
+
+              maxEntries:
+                500,
             });
 
           const dropboxMessage =
@@ -939,23 +1184,34 @@ router.post(
             );
 
           return res.json({
-            success: true,
+            success:
+              true,
+
             message:
               dropboxMessage ||
               "I couldn't find any files or folders in your Dropbox.",
-            dropboxBrowseUsed: true,
+
+            dropboxBrowseUsed:
+              true,
+
             dropboxTotalEntries:
               dropboxTree.totalEntries,
-            dropboxSources: [],
+
+            dropboxSources:
+              [],
           });
-        } catch (dropboxError) {
+        } catch (
+          dropboxError
+        ) {
           console.error(
             "Dropbox browse error:",
             dropboxError
           );
 
           return res.status(500).json({
-            success: false,
+            success:
+              false,
+
             message:
               "I couldn't browse your Dropbox right now.",
           });
@@ -967,11 +1223,12 @@ router.post(
       |--------------------------------------------------------------------------
       | DROPBOX FOLDER REQUEST
       |--------------------------------------------------------------------------
-      *
-      * Examples:
-      *
-      * "Show what's inside my Certifications folder in Dropbox"
-      * "Check my Internship folder in Dropbox"
+      |
+      | Examples:
+      |
+      | "Show what's inside my Certifications folder in Dropbox"
+      | "Check my Internship folder in Dropbox"
+      |
       */
 
       if (
@@ -994,21 +1251,33 @@ router.post(
           folderName
         );
 
-        if (!dropboxConnector) {
+        if (
+          !dropboxConnector
+        ) {
           return res.status(400).json({
-            success: false,
+            success:
+              false,
+
             message:
               "Dropbox is not connected. Please connect your Dropbox first.",
           });
         }
 
-        if (!folderName) {
+        if (
+          !folderName
+        ) {
           return res.json({
-            success: true,
+            success:
+              true,
+
             message:
               "I couldn't determine which Dropbox folder you meant. Tell me the folder name.",
-            dropboxFolderUsed: true,
-            dropboxSources: [],
+
+            dropboxFolderUsed:
+              true,
+
+            dropboxSources:
+              [],
           });
         }
 
@@ -1017,33 +1286,50 @@ router.post(
             await findDropboxFoldersByName({
               accessToken:
                 dropboxConnector.accessToken,
+
               refreshToken:
                 dropboxConnector.refreshToken,
+
               folderName,
             });
 
-          if (folders.length === 0) {
+
+          if (
+            folders.length ===
+            0
+          ) {
             return res.json({
-              success: true,
+              success:
+                true,
+
               message:
                 `I couldn't find a folder named "${folderName}" in your Dropbox.`,
-              dropboxFolderUsed: true,
-              dropboxSources: [],
+
+              dropboxFolderUsed:
+                true,
+
+              dropboxSources:
+                [],
             });
           }
 
+
           const folder =
             folders[0];
+
 
           const contents =
             await listDropboxFolderContents({
               accessToken:
                 dropboxConnector.accessToken,
+
               refreshToken:
                 dropboxConnector.refreshToken,
+
               folderPath:
                 folder.path,
             });
+
 
           const folderMessage =
             formatDropboxFolderContents(
@@ -1051,37 +1337,65 @@ router.post(
               contents
             );
 
+
           return res.json({
-            success: true,
+            success:
+              true,
+
             message:
               folderMessage,
-            dropboxFolderUsed: true,
+
+            dropboxFolderUsed:
+              true,
+
             dropboxFolder: {
-              id: folder.id,
-              name: folder.name,
-              path: folder.path,
+              id:
+                folder.id,
+
+              name:
+                folder.name,
+
+              path:
+                folder.path,
             },
+
             dropboxSources:
-              contents.map((item) => ({
-                id: item.id,
-                name: item.name,
-                type: item.type,
-                path: item.path,
-                size:
-                  item.size || null,
-                modifiedTime:
-                  item.modifiedTime ||
-                  null,
-              })),
+              contents.map(
+                (item) => ({
+                  id:
+                    item.id,
+
+                  name:
+                    item.name,
+
+                  type:
+                    item.type,
+
+                  path:
+                    item.path,
+
+                  size:
+                    item.size ||
+                    null,
+
+                  modifiedTime:
+                    item.modifiedTime ||
+                    null,
+                })
+              ),
           });
-        } catch (folderError) {
+        } catch (
+          folderError
+        ) {
           console.error(
             "Dropbox folder error:",
             folderError
           );
 
           return res.status(500).json({
-            success: false,
+            success:
+              false,
+
             message:
               "I couldn't access that Dropbox folder right now.",
           });
@@ -1093,21 +1407,30 @@ router.post(
       |--------------------------------------------------------------------------
       | GOOGLE DRIVE BROWSE
       |--------------------------------------------------------------------------
-      *
-      * Example:
-      *
-      * "List all files and folders in my Drive"
+      |
+      | Example:
+      |
+      | "List all files and folders in my Drive"
+      |
       */
 
-      if (shouldBrowseDrive(userMessage)) {
+      if (
+        shouldBrowseDrive(
+          userMessage
+        )
+      ) {
         console.log(
           "📁 Lawlite Drive browse:",
           userMessage
         );
 
-        if (!connector) {
+        if (
+          !connector
+        ) {
           return res.status(400).json({
-            success: false,
+            success:
+              false,
+
             message:
               "Google Drive is not connected. Please connect your Google Drive first.",
           });
@@ -1122,36 +1445,46 @@ router.post(
               refreshToken:
                 connector.refreshToken,
 
-              maxFiles: 500,
+              maxFiles:
+                500,
             });
+
 
           const driveMessage =
             formatDriveTree(
               driveTree.tree
             );
 
+
           return res.json({
-            success: true,
+            success:
+              true,
 
             message:
               driveMessage ||
               "I couldn't find any files or folders in your Google Drive.",
 
-            driveBrowseUsed: true,
+            driveBrowseUsed:
+              true,
 
             driveTotalFiles:
               driveTree.totalFiles,
 
-            driveSources: [],
+            driveSources:
+              [],
           });
-        } catch (driveError) {
+        } catch (
+          driveError
+        ) {
           console.error(
             "Google Drive browse error:",
             driveError
           );
 
           return res.status(500).json({
-            success: false,
+            success:
+              false,
+
             message:
               "I couldn't browse your Google Drive right now.",
           });
@@ -1163,16 +1496,19 @@ router.post(
       |--------------------------------------------------------------------------
       | GOOGLE DRIVE FOLDER REQUEST
       |--------------------------------------------------------------------------
-      *
-      * Examples:
-      *
-      * "Check my Certifications folder"
-      *
-      * "Find my certificate in Certifications folder"
+      |
+      | Examples:
+      |
+      | "Check my Certifications folder"
+      |
+      | "Find my certificate in Certifications folder"
+      |
       */
 
       if (
-        shouldUseDriveFolder(userMessage)
+        shouldUseDriveFolder(
+          userMessage
+        )
       ) {
         const folderName =
           extractFolderName(
@@ -1205,16 +1541,23 @@ router.post(
                 folderName,
               });
 
-            if (folders.length === 0) {
+
+            if (
+              folders.length ===
+              0
+            ) {
               return res.json({
-                success: true,
+                success:
+                  true,
 
                 message:
                   `I couldn't find a folder named "${folderName}" in your Google Drive.`,
 
-                driveFolderUsed: true,
+                driveFolderUsed:
+                  true,
 
-                driveSources: [],
+                driveSources:
+                  [],
               });
             }
 
@@ -1244,22 +1587,28 @@ router.post(
 
 
             return res.json({
-              success: true,
+              success:
+                true,
 
               message:
                 folderMessage,
 
-              driveFolderUsed: true,
+              driveFolderUsed:
+                true,
 
               driveFolder: {
-                id: folder.id,
-                name: folder.name,
+                id:
+                  folder.id,
+
+                name:
+                  folder.name,
               },
 
               driveSources:
                 contents.map(
                   (item) => ({
-                    id: item.id,
+                    id:
+                      item.id,
 
                     name:
                       item.name,
@@ -1281,27 +1630,38 @@ router.post(
                   })
                 ),
             });
-          } catch (folderError) {
+          } catch (
+            folderError
+          ) {
             console.error(
               "Google Drive folder error:",
               folderError
             );
 
             return res.status(500).json({
-              success: false,
+              success:
+                false,
+
               message:
                 "I couldn't access that Google Drive folder right now.",
             });
           }
         }
 
-        /**
-         * If the user mentions a folder but
-         * Drive isn't connected.
-         */
-        if (!connector) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | IF FOLDER MENTIONED BUT DRIVE IS NOT CONNECTED
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+          !connector
+        ) {
           return res.status(400).json({
-            success: false,
+            success:
+              false,
+
             message:
               "Google Drive is not connected. Please connect your Google Drive first.",
           });
@@ -1320,10 +1680,13 @@ router.post(
           userMessage
         );
 
-      let webContext = null;
+      let webContext =
+        null;
 
 
-      if (needsWebSearch) {
+      if (
+        needsWebSearch
+      ) {
         console.log(
           "🌐 Lawlite web search:",
           userMessage
@@ -1332,29 +1695,45 @@ router.post(
         try {
           const searchResults =
             await searchWeb({
-              query: userMessage,
-              num: 5,
+              query:
+                userMessage,
+
+              num:
+                5,
             });
 
+
           const organicResults =
-            searchResults?.organic || [];
+            searchResults?.organic ||
+            [];
+
 
           webContext =
             organicResults
               .map(
-                (result, index) =>
+                (
+                  result,
+                  index
+                ) =>
                   `SOURCE ${index + 1}
 Title: ${result.title || ""}
 URL: ${result.link || ""}
 Snippet: ${result.snippet || ""}`
               )
-              .join("\n\n");
+              .join(
+                "\n\n"
+              );
 
-          if (!webContext) {
+
+          if (
+            !webContext
+          ) {
             webContext =
               "No useful web results were found.";
           }
-        } catch (webError) {
+        } catch (
+          webError
+        ) {
           console.error(
             "Web search error:",
             webError
@@ -1377,23 +1756,38 @@ Snippet: ${result.snippet || ""}`
           userMessage
         );
 
-      let driveContext = null;
+      let driveContext =
+        null;
 
-      let driveSources = [];
-
-      let dropboxContext = null;
-
-      let dropboxSources = [];
+      let driveSources =
+        [];
 
 
-      if (needsDriveSearch) {
+      /*
+      |--------------------------------------------------------------------------
+      | DROPBOX CONTEXT
+      |--------------------------------------------------------------------------
+      */
+
+      let dropboxContext =
+        null;
+
+      let dropboxSources =
+        [];
+
+
+      if (
+        needsDriveSearch
+      ) {
         console.log(
           "📁 Lawlite Drive search:",
           userMessage
         );
 
 
-        if (connector) {
+        if (
+          connector
+        ) {
           try {
             const driveResult =
               await getRelevantDriveContext({
@@ -1406,9 +1800,11 @@ Snippet: ${result.snippet || ""}`
                 query:
                   userMessage,
 
-                maxFiles: 3,
+                maxFiles:
+                  3,
 
-                maxCharsPerFile: 12000,
+                maxCharsPerFile:
+                  12000,
               });
 
 
@@ -1417,18 +1813,16 @@ Snippet: ${result.snippet || ""}`
               null;
 
 
-            /**
-             * IMPORTANT:
-             *
-             * googleDriveService returns
-             * `sources`, not `files`.
-             *
-             * This fixes the previous:
-             *
-             * "Drive sources found: 0"
-             *
-             * even when the PDF was successfully loaded.
-             */
+            /*
+            |--------------------------------------------------------------------------
+            | IMPORTANT
+            |--------------------------------------------------------------------------
+            |
+            | googleDriveService returns
+            | `sources`, not `files`.
+            |
+            */
+
             driveSources =
               driveResult?.sources ||
               [];
@@ -1439,7 +1833,10 @@ Snippet: ${result.snippet || ""}`
             );
 
 
-            if (driveSources.length > 0) {
+            if (
+              driveSources.length >
+              0
+            ) {
               console.log(
                 "📄 Drive sources:",
                 driveSources.map(
@@ -1448,19 +1845,25 @@ Snippet: ${result.snippet || ""}`
                 )
               );
             }
-          } catch (driveError) {
+          } catch (
+            driveError
+          ) {
             console.error(
               "Google Drive context error:",
               driveError
             );
 
-            /**
-             * Drive failure should NOT
-             * break normal chat.
-             */
-            driveContext = null;
+            /*
+            |--------------------------------------------------------------------------
+            | DRIVE FAILURE MUST NOT BREAK NORMAL CHAT
+            |--------------------------------------------------------------------------
+            */
 
-            driveSources = [];
+            driveContext =
+              null;
+
+            driveSources =
+              [];
           }
         } else {
           console.log(
@@ -1474,47 +1877,71 @@ Snippet: ${result.snippet || ""}`
       |--------------------------------------------------------------------------
       | DROPBOX DOCUMENT SEARCH
       |--------------------------------------------------------------------------
-      *
-      * Explicit Dropbox mentions are routed here.
-      * Dropbox context is combined with the existing private
-      * document context channel so Sarvam can answer naturally.
+      |
+      | Explicit Dropbox mentions are routed here.
+      |
+      | Dropbox context is combined with the existing
+      | private document context channel so Sarvam can
+      | answer naturally.
+      |
       */
 
       if (
-        mentionsDropbox(userMessage) &&
-        !shouldBrowseDropbox(userMessage) &&
-        !shouldUseDropboxFolder(userMessage)
+        mentionsDropbox(
+          userMessage
+        ) &&
+        !shouldBrowseDropbox(
+          userMessage
+        ) &&
+        !shouldUseDropboxFolder(
+          userMessage
+        )
       ) {
         console.log(
           "📦 Lawlite Dropbox document search:",
           userMessage
         );
 
-        if (dropboxConnector) {
+
+        if (
+          dropboxConnector
+        ) {
           try {
             const dropboxResult =
               await getRelevantDropboxContext({
                 connector:
                   dropboxConnector,
+
                 query:
                   userMessage,
-                maxFiles: 3,
-                maxCharsPerFile: 12000,
+
+                maxFiles:
+                  3,
+
+                maxCharsPerFile:
+                  12000,
               });
+
 
             dropboxContext =
               dropboxResult?.context ||
               null;
 
+
             dropboxSources =
               dropboxResult?.sources ||
               [];
+
 
             console.log(
               `📦 Dropbox sources found: ${dropboxSources.length}`
             );
 
-            if (dropboxSources.length > 0) {
+
+            if (
+              dropboxSources.length >
+              0
+            ) {
               console.log(
                 "📄 Dropbox sources:",
                 dropboxSources.map(
@@ -1523,18 +1950,125 @@ Snippet: ${result.snippet || ""}`
                 )
               );
             }
-          } catch (dropboxError) {
+          } catch (
+            dropboxError
+          ) {
             console.error(
               "Dropbox context error:",
               dropboxError
             );
 
-            dropboxContext = null;
-            dropboxSources = [];
+            dropboxContext =
+              null;
+
+            dropboxSources =
+              [];
           }
         } else {
           console.log(
             "📦 Dropbox is not connected."
+          );
+        }
+      }
+
+
+      /*
+      |--------------------------------------------------------------------------
+      | NOTION DOCUMENT SEARCH
+      |--------------------------------------------------------------------------
+      |
+      | Explicit Notion mentions are routed here.
+      |
+      | Notion pages are searched and their readable block
+      | content is added to the private document context.
+      |
+      */
+
+      const needsNotionSearch =
+        shouldSearchNotion(
+          userMessage
+        );
+
+      let notionContext =
+        null;
+
+      let notionSources =
+        [];
+
+
+      if (
+        needsNotionSearch
+      ) {
+        console.log(
+          "📝 Lawlite Notion search:",
+          userMessage
+        );
+
+
+        if (
+          notionConnector
+        ) {
+          try {
+            const notionResult =
+              await getRelevantNotionContext({
+                accessToken:
+                  notionConnector.accessToken,
+
+                query:
+                  userMessage,
+
+                maxPages:
+                  3,
+
+                maxCharsPerPage:
+                  12000,
+              });
+
+
+            notionContext =
+              notionResult?.context ||
+              null;
+
+
+            notionSources =
+              notionResult?.sources ||
+              [];
+
+
+            console.log(
+              `📝 Notion sources found: ${notionSources.length}`
+            );
+
+
+            if (
+              notionSources.length >
+              0
+            ) {
+              console.log(
+                "📄 Notion sources:",
+                notionSources.map(
+                  (source) =>
+                    source.name
+                )
+              );
+            }
+          } catch (
+            notionError
+          ) {
+            console.error(
+              "Notion context error:",
+              notionError
+            );
+
+            notionContext =
+              null;
+
+            notionSources =
+              [];
+          }
+        } else {
+          console.log(
+            "📝 Notion is not connected."
           );
         }
       }
@@ -1550,12 +2084,20 @@ Snippet: ${result.snippet || ""}`
         driveContext
           ? `GOOGLE DRIVE CONTEXT\n${driveContext}`
           : null,
+
         dropboxContext
           ? `DROPBOX CONTEXT\n${dropboxContext}`
           : null,
+
+        notionContext
+          ? `NOTION CONTEXT\n${notionContext}`
+          : null,
       ]
         .filter(Boolean)
-        .join("\n\n====================\n\n") || null;
+        .join(
+          "\n\n====================\n\n"
+        ) || null;
+
 
       const answer =
         await generateChatResponse({
@@ -1564,6 +2106,17 @@ Snippet: ${result.snippet || ""}`
 
           webResults:
             webContext,
+
+          /*
+          |--------------------------------------------------------------------------
+          | PRIVATE DOCUMENT CONTEXT
+          |--------------------------------------------------------------------------
+          |
+          | Existing Sarvam service already accepts `driveContext`.
+          | We combine Google Drive + Dropbox + Notion here so
+          | we do not break the current working Sarvam interface.
+          |
+          */
 
           driveContext:
             combinedPrivateDocumentContext,
@@ -1577,7 +2130,8 @@ Snippet: ${result.snippet || ""}`
       */
 
       return res.json({
-        success: true,
+        success:
+          true,
 
         message:
           answer,
@@ -1611,8 +2165,11 @@ Snippet: ${result.snippet || ""}`
           ),
 
         dropboxSearchUsed:
-          mentionsDropbox(userMessage) &&
-          dropboxSources.length > 0,
+          mentionsDropbox(
+            userMessage
+          ) &&
+          dropboxSources.length >
+            0,
 
         dropboxSources:
           dropboxSources.map(
@@ -1627,10 +2184,35 @@ Snippet: ${result.snippet || ""}`
                 file.path,
 
               size:
-                file.size || null,
+                file.size ||
+                null,
 
               modifiedTime:
                 file.modifiedTime ||
+                null,
+            })
+          ),
+
+        notionSearchUsed:
+          needsNotionSearch &&
+          notionSources.length >
+            0,
+
+        notionSources:
+          notionSources.map(
+            (page) => ({
+              id:
+                page.id,
+
+              name:
+                page.name,
+
+              url:
+                page.url ||
+                null,
+
+              lastEditedTime:
+                page.lastEditedTime ||
                 null,
             })
           ),
@@ -1647,14 +2229,19 @@ Snippet: ${result.snippet || ""}`
         dropboxFolderUsed:
           false,
       });
-    } catch (error) {
+
+    } catch (
+      error
+    ) {
       console.error(
         "Chat route error:",
         error
       );
 
       return res.status(500).json({
-        success: false,
+        success:
+          false,
+
         message:
           "Unable to generate a response right now.",
       });
@@ -1681,10 +2268,13 @@ router.post(
 
       if (
         !message ||
-        typeof message !== "string"
+        typeof message !==
+          "string"
       ) {
         return res.status(400).json({
-          success: false,
+          success:
+            false,
+
           message:
             "Message is required.",
         });
@@ -1698,17 +2288,24 @@ router.post(
 
 
       return res.json({
-        success: true,
+        success:
+          true,
+
         title,
       });
-    } catch (error) {
+
+    } catch (
+      error
+    ) {
       console.error(
         "Chat title error:",
         error
       );
 
       return res.status(500).json({
-        success: false,
+        success:
+          false,
+
         message:
           "Unable to generate chat title.",
       });
@@ -1739,10 +2336,13 @@ router.post(
 
       if (
         !query ||
-        typeof query !== "string"
+        typeof query !==
+          "string"
       ) {
         return res.status(400).json({
-          success: false,
+          success:
+            false,
+
           message:
             "Search query is required.",
         });
@@ -1754,22 +2354,30 @@ router.post(
           query:
             query.trim(),
 
-          num: 5,
+          num:
+            5,
         });
 
 
       return res.json({
-        success: true,
+        success:
+          true,
+
         results,
       });
-    } catch (error) {
+
+    } catch (
+      error
+    ) {
       console.error(
         "Web search route error:",
         error
       );
 
       return res.status(500).json({
-        success: false,
+        success:
+          false,
+
         message:
           "Unable to search the web right now.",
       });

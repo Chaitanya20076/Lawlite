@@ -18,6 +18,14 @@ const {
 } = require("../services/googleDriveService");
 
 const {
+  listDropboxTree,
+  findDropboxFoldersByName,
+  listDropboxFolderContents,
+  findRelevantDropboxFiles,
+  downloadDropboxFile,
+} = require("../services/dropboxService");
+
+const {
   requireAuth,
 } = require("../middleware/authMiddleware");
 
@@ -32,6 +40,16 @@ const {
 const router = express.Router();
 
 const db = getFirestore(firebaseApp);
+
+let pdfParse = null;
+
+try {
+  pdfParse = require("pdf-parse");
+} catch (error) {
+  console.warn(
+    "pdf-parse is not available. Dropbox PDF text extraction will be unavailable."
+  );
+}
 
 
 /*
@@ -374,6 +392,380 @@ const getGoogleDriveConnector = async (uid) => {
 };
 
 
+
+/*
+|--------------------------------------------------------------------------
+| DROPBOX HELPERS
+|--------------------------------------------------------------------------
+*/
+
+/**
+ * Detect whether the user explicitly wants Dropbox.
+ */
+const mentionsDropbox = (message = "") => {
+  const text = String(message).toLowerCase();
+
+  return (
+    text.includes("dropbox") ||
+    text.includes("drop box")
+  );
+};
+
+
+/**
+ * Decide whether the user wants to browse their Dropbox.
+ */
+const shouldBrowseDropbox = (message = "") => {
+  const text = String(message).toLowerCase().trim();
+
+  if (!mentionsDropbox(text)) {
+    return false;
+  }
+
+  const browseTriggers = [
+    "list",
+    "show",
+    "browse",
+    "files",
+    "folders",
+    "everything",
+    "all files",
+    "all folders",
+    "what do i have",
+    "what's in",
+    "whats in",
+  ];
+
+  return browseTriggers.some((trigger) =>
+    text.includes(trigger)
+  );
+};
+
+
+/**
+ * Decide whether the user is asking about a specific Dropbox folder.
+ */
+const shouldUseDropboxFolder = (message = "") => {
+  const text = String(message).toLowerCase().trim();
+
+  if (!mentionsDropbox(text) || !text.includes("folder")) {
+    return false;
+  }
+
+  return [
+    "check",
+    "search",
+    "find",
+    "look",
+    "inside",
+    "in",
+    "from",
+    "show",
+    "what",
+  ].some((trigger) => text.includes(trigger));
+};
+
+
+/**
+ * Extract a Dropbox folder name from natural language.
+ */
+const extractDropboxFolderName = (message = "") => {
+  const text = String(message).trim();
+
+  const patterns = [
+    /\bin\s+(?:my\s+)?["']?([^"'?.]+?)["']?\s+folder\b/i,
+    /\bfrom\s+(?:my\s+)?["']?([^"'?.]+?)["']?\s+folder\b/i,
+    /\bcheck\s+(?:my\s+)?["']?([^"'?.]+?)["']?\s+folder\b/i,
+    /\binside\s+(?:my\s+)?["']?([^"'?.]+?)["']?\s+folder\b/i,
+    /\bthe\s+["']?([^"'?.]+?)["']?\s+folder\b/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+
+    if (match?.[1]) {
+      return match[1]
+        .trim()
+        .replace(/\s+/g, " ");
+    }
+  }
+
+  return null;
+};
+
+
+/**
+ * Format Dropbox tree output.
+ */
+const formatDropboxTree = (
+  node,
+  depth = 0
+) => {
+  if (!node) {
+    return "";
+  }
+
+  const indent = "  ".repeat(depth);
+
+  if (node.type === "folder") {
+    let output = `${indent}📁 ${node.name}\n`;
+
+    if (Array.isArray(node.children)) {
+      for (const child of node.children) {
+        output += formatDropboxTree(
+          child,
+          depth + 1
+        );
+      }
+    }
+
+    return output;
+  }
+
+  return `${indent}📄 ${node.name}\n`;
+};
+
+
+/**
+ * Format direct Dropbox folder contents.
+ */
+const formatDropboxFolderContents = (
+  folder,
+  contents = []
+) => {
+  let output =
+    `📁 ${folder.name}\n\n`;
+
+  const folders = contents.filter(
+    (item) =>
+      item.type === "folder"
+  );
+
+  const files = contents.filter(
+    (item) =>
+      item.type === "file"
+  );
+
+  if (folders.length > 0) {
+    output += "Folders:\n";
+
+    folders.forEach((item) => {
+      output += `- 📁 ${item.name}\n`;
+    });
+
+    output += "\n";
+  }
+
+  if (files.length > 0) {
+    output += "Files:\n";
+
+    files.forEach((item) => {
+      output += `- 📄 ${item.name}\n`;
+    });
+  }
+
+  if (
+    folders.length === 0 &&
+    files.length === 0
+  ) {
+    output +=
+      "This folder is currently empty.";
+  }
+
+  return output.trim();
+};
+
+
+/**
+ * Get the user's Dropbox connector from Firestore.
+ */
+const getDropboxConnector = async (uid) => {
+  if (!uid) {
+    return null;
+  }
+
+  const connectorRef = db
+    .collection("users")
+    .doc(uid)
+    .collection("connectors")
+    .doc("dropbox");
+
+  const snapshot =
+    await connectorRef.get();
+
+  if (!snapshot.exists) {
+    return null;
+  }
+
+  const data = snapshot.data();
+
+  if (
+    !data?.accessToken &&
+    !data?.refreshToken
+  ) {
+    return null;
+  }
+
+  return data;
+};
+
+
+/**
+ * Extract readable text from a downloaded Dropbox file.
+ *
+ * Phase 1 supports PDFs and common plain-text formats.
+ * Other formats are skipped rather than breaking normal chat.
+ */
+const extractDropboxFileText = async ({
+  buffer,
+  fileName = "",
+} = {}) => {
+  if (!buffer || !Buffer.isBuffer(buffer)) {
+    return null;
+  }
+
+  const extension =
+    String(fileName)
+      .toLowerCase()
+      .split(".")
+      .pop();
+
+  if (
+    extension === "pdf"
+  ) {
+    if (!pdfParse) {
+      throw new Error(
+        "PDF extraction requires pdf-parse."
+      );
+    }
+
+    const parsed =
+      await pdfParse(buffer);
+
+    return (
+      parsed?.text?.trim() ||
+      null
+    );
+  }
+
+  const textExtensions = [
+    "txt",
+    "md",
+    "csv",
+    "json",
+    "js",
+    "jsx",
+    "ts",
+    "tsx",
+    "css",
+    "html",
+    "xml",
+    "log",
+  ];
+
+  if (
+    textExtensions.includes(
+      extension
+    )
+  ) {
+    return buffer
+      .toString("utf8")
+      .trim();
+  }
+
+  return null;
+};
+
+
+/**
+ * Search Dropbox, download relevant readable files,
+ * and prepare a compact context for Sarvam.
+ */
+const getRelevantDropboxContext = async ({
+  connector,
+  query,
+  maxFiles = 3,
+  maxCharsPerFile = 12000,
+} = {}) => {
+  if (!connector || !query?.trim()) {
+    return {
+      context: null,
+      sources: [],
+    };
+  }
+
+  const files =
+    await findRelevantDropboxFiles({
+      accessToken:
+        connector.accessToken,
+      refreshToken:
+        connector.refreshToken,
+      query,
+      maxFiles,
+    });
+
+  const sources = [];
+  const contextParts = [];
+
+  for (const file of files) {
+    try {
+      const downloaded =
+        await downloadDropboxFile({
+          accessToken:
+            connector.accessToken,
+          refreshToken:
+            connector.refreshToken,
+          path: file.path,
+        });
+
+      const text =
+        await extractDropboxFileText({
+          buffer:
+            downloaded.buffer,
+          fileName:
+            file.name,
+        });
+
+      sources.push({
+        id: file.id,
+        name: file.name,
+        path: file.path,
+        size: file.size || null,
+        modifiedTime:
+          file.modifiedTime || null,
+      });
+
+      if (!text) {
+        continue;
+      }
+
+      contextParts.push(
+        `DROPBOX SOURCE
+Name: ${file.name}
+Path: ${file.path}
+Content:
+${text.slice(
+  0,
+  maxCharsPerFile
+)}`
+      );
+    } catch (fileError) {
+      console.error(
+        `Dropbox file read error for "${file.name}":`,
+        fileError
+      );
+    }
+  }
+
+  return {
+    context:
+      contextParts.length > 0
+        ? contextParts.join("\n\n---\n\n")
+        : null,
+    sources,
+  };
+};
+
 /*
 |--------------------------------------------------------------------------
 | CHAT RESPONSE
@@ -489,6 +881,211 @@ router.post(
           "Google Drive connector lookup error:",
           connectorError
         );
+      }
+
+      let dropboxConnector = null;
+
+      try {
+        dropboxConnector =
+          await getDropboxConnector(
+            req.user?.uid
+          );
+      } catch (connectorError) {
+        console.error(
+          "Dropbox connector lookup error:",
+          connectorError
+        );
+      }
+
+
+      /*
+      |--------------------------------------------------------------------------
+      | DROPBOX BROWSE
+      |--------------------------------------------------------------------------
+      *
+      * Examples:
+      *
+      * "List my Dropbox files"
+      * "Show my Dropbox folders"
+      */
+
+      if (shouldBrowseDropbox(userMessage)) {
+        console.log(
+          "📦 Lawlite Dropbox browse:",
+          userMessage
+        );
+
+        if (!dropboxConnector) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Dropbox is not connected. Please connect your Dropbox first.",
+          });
+        }
+
+        try {
+          const dropboxTree =
+            await listDropboxTree({
+              accessToken:
+                dropboxConnector.accessToken,
+              refreshToken:
+                dropboxConnector.refreshToken,
+              maxEntries: 500,
+            });
+
+          const dropboxMessage =
+            formatDropboxTree(
+              dropboxTree.tree
+            );
+
+          return res.json({
+            success: true,
+            message:
+              dropboxMessage ||
+              "I couldn't find any files or folders in your Dropbox.",
+            dropboxBrowseUsed: true,
+            dropboxTotalEntries:
+              dropboxTree.totalEntries,
+            dropboxSources: [],
+          });
+        } catch (dropboxError) {
+          console.error(
+            "Dropbox browse error:",
+            dropboxError
+          );
+
+          return res.status(500).json({
+            success: false,
+            message:
+              "I couldn't browse your Dropbox right now.",
+          });
+        }
+      }
+
+
+      /*
+      |--------------------------------------------------------------------------
+      | DROPBOX FOLDER REQUEST
+      |--------------------------------------------------------------------------
+      *
+      * Examples:
+      *
+      * "Show what's inside my Certifications folder in Dropbox"
+      * "Check my Internship folder in Dropbox"
+      */
+
+      if (
+        shouldUseDropboxFolder(
+          userMessage
+        )
+      ) {
+        const folderName =
+          extractDropboxFolderName(
+            userMessage
+          );
+
+        console.log(
+          "📦 Lawlite Dropbox folder request:",
+          userMessage
+        );
+
+        console.log(
+          "📦 Extracted Dropbox folder:",
+          folderName
+        );
+
+        if (!dropboxConnector) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Dropbox is not connected. Please connect your Dropbox first.",
+          });
+        }
+
+        if (!folderName) {
+          return res.json({
+            success: true,
+            message:
+              "I couldn't determine which Dropbox folder you meant. Tell me the folder name.",
+            dropboxFolderUsed: true,
+            dropboxSources: [],
+          });
+        }
+
+        try {
+          const folders =
+            await findDropboxFoldersByName({
+              accessToken:
+                dropboxConnector.accessToken,
+              refreshToken:
+                dropboxConnector.refreshToken,
+              folderName,
+            });
+
+          if (folders.length === 0) {
+            return res.json({
+              success: true,
+              message:
+                `I couldn't find a folder named "${folderName}" in your Dropbox.`,
+              dropboxFolderUsed: true,
+              dropboxSources: [],
+            });
+          }
+
+          const folder =
+            folders[0];
+
+          const contents =
+            await listDropboxFolderContents({
+              accessToken:
+                dropboxConnector.accessToken,
+              refreshToken:
+                dropboxConnector.refreshToken,
+              folderPath:
+                folder.path,
+            });
+
+          const folderMessage =
+            formatDropboxFolderContents(
+              folder,
+              contents
+            );
+
+          return res.json({
+            success: true,
+            message:
+              folderMessage,
+            dropboxFolderUsed: true,
+            dropboxFolder: {
+              id: folder.id,
+              name: folder.name,
+              path: folder.path,
+            },
+            dropboxSources:
+              contents.map((item) => ({
+                id: item.id,
+                name: item.name,
+                type: item.type,
+                path: item.path,
+                size:
+                  item.size || null,
+                modifiedTime:
+                  item.modifiedTime ||
+                  null,
+              })),
+          });
+        } catch (folderError) {
+          console.error(
+            "Dropbox folder error:",
+            folderError
+          );
+
+          return res.status(500).json({
+            success: false,
+            message:
+              "I couldn't access that Dropbox folder right now.",
+          });
+        }
       }
 
 
@@ -784,6 +1381,10 @@ Snippet: ${result.snippet || ""}`
 
       let driveSources = [];
 
+      let dropboxContext = null;
+
+      let dropboxSources = [];
+
 
       if (needsDriveSearch) {
         console.log(
@@ -871,9 +1472,90 @@ Snippet: ${result.snippet || ""}`
 
       /*
       |--------------------------------------------------------------------------
+      | DROPBOX DOCUMENT SEARCH
+      |--------------------------------------------------------------------------
+      *
+      * Explicit Dropbox mentions are routed here.
+      * Dropbox context is combined with the existing private
+      * document context channel so Sarvam can answer naturally.
+      */
+
+      if (
+        mentionsDropbox(userMessage) &&
+        !shouldBrowseDropbox(userMessage) &&
+        !shouldUseDropboxFolder(userMessage)
+      ) {
+        console.log(
+          "📦 Lawlite Dropbox document search:",
+          userMessage
+        );
+
+        if (dropboxConnector) {
+          try {
+            const dropboxResult =
+              await getRelevantDropboxContext({
+                connector:
+                  dropboxConnector,
+                query:
+                  userMessage,
+                maxFiles: 3,
+                maxCharsPerFile: 12000,
+              });
+
+            dropboxContext =
+              dropboxResult?.context ||
+              null;
+
+            dropboxSources =
+              dropboxResult?.sources ||
+              [];
+
+            console.log(
+              `📦 Dropbox sources found: ${dropboxSources.length}`
+            );
+
+            if (dropboxSources.length > 0) {
+              console.log(
+                "📄 Dropbox sources:",
+                dropboxSources.map(
+                  (source) =>
+                    source.name
+                )
+              );
+            }
+          } catch (dropboxError) {
+            console.error(
+              "Dropbox context error:",
+              dropboxError
+            );
+
+            dropboxContext = null;
+            dropboxSources = [];
+          }
+        } else {
+          console.log(
+            "📦 Dropbox is not connected."
+          );
+        }
+      }
+
+
+      /*
+      |--------------------------------------------------------------------------
       | GENERATE FINAL SARVAM RESPONSE
       |--------------------------------------------------------------------------
       */
+
+      const combinedPrivateDocumentContext = [
+        driveContext
+          ? `GOOGLE DRIVE CONTEXT\n${driveContext}`
+          : null,
+        dropboxContext
+          ? `DROPBOX CONTEXT\n${dropboxContext}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join("\n\n====================\n\n") || null;
 
       const answer =
         await generateChatResponse({
@@ -884,7 +1566,7 @@ Snippet: ${result.snippet || ""}`
             webContext,
 
           driveContext:
-            driveContext,
+            combinedPrivateDocumentContext,
         });
 
 
@@ -928,10 +1610,41 @@ Snippet: ${result.snippet || ""}`
             })
           ),
 
+        dropboxSearchUsed:
+          mentionsDropbox(userMessage) &&
+          dropboxSources.length > 0,
+
+        dropboxSources:
+          dropboxSources.map(
+            (file) => ({
+              id:
+                file.id,
+
+              name:
+                file.name,
+
+              path:
+                file.path,
+
+              size:
+                file.size || null,
+
+              modifiedTime:
+                file.modifiedTime ||
+                null,
+            })
+          ),
+
         driveBrowseUsed:
           false,
 
         driveFolderUsed:
+          false,
+
+        dropboxBrowseUsed:
+          false,
+
+        dropboxFolderUsed:
           false,
       });
     } catch (error) {

@@ -2,15 +2,17 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+
 const chatRoutes = require("./routes/chatRoutes");
+const authRoutes = require("./routes/authRoutes");
+const connectorRoutes = require("./routes/connectorRoutes");
+const dropboxRoutes = require("./routes/dropboxRoutes");
+
 require("./config/firebase");
 
-const authRoutes = require("./routes/authRoutes");
-
 const app = express();
-const connectorRoutes = require("./routes/connectorRoutes");
-const PORT = process.env.PORT || 5000;
 
+const PORT = process.env.PORT || 5000;
 
 // ==========================================
 // MIDDLEWARE
@@ -25,7 +27,6 @@ app.use(
 
 app.use(express.json());
 
-
 // ==========================================
 // ROUTES
 // ==========================================
@@ -37,7 +38,6 @@ app.get("/", (req, res) => {
   });
 });
 
-
 app.get("/api/health", (req, res) => {
   res.json({
     success: true,
@@ -45,14 +45,35 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// ==========================================
+// AUTH
+// ==========================================
 
 app.use("/api/auth", authRoutes);
+
+// ==========================================
+// CHAT
+// ==========================================
+
 app.use("/api/chat", chatRoutes);
+
+// ==========================================
+// GOOGLE DRIVE CONNECTOR
+// ==========================================
+
 app.use(
   "/api/connectors",
   connectorRoutes
 );
 
+// ==========================================
+// DROPBOX CONNECTOR
+// ==========================================
+
+app.use(
+  "/api/connectors/dropbox",
+  dropboxRoutes
+);
 
 // ==========================================
 // SERVER

@@ -182,6 +182,7 @@ const [copiedResponseId, setCopiedResponseId] = useState(null);
 
   const [connectorStatus, setConnectorStatus] = useState({
     "google-drive": false,
+    dropbox: false,
   });
   const [connectorLoading, setConnectorLoading] = useState(false);
   const [authReady, setAuthReady] = useState(false);
@@ -311,12 +312,133 @@ const handleGoogleDriveDisconnect = async () => {
   }
 };
 
+const checkDropboxStatus = async () => {
+  try {
+    const idToken = await getFirebaseIdToken();
+    const response = await fetch(
+      `${API_BASE_URL}/api/connectors/dropbox/status`,
+      {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data?.message || "Unable to check Dropbox status."
+      );
+    }
+
+    const connected = Boolean(data.connected);
+
+    setConnectorStatus((previous) => ({
+      ...previous,
+      dropbox: connected,
+    }));
+
+    return connected;
+  } catch (error) {
+    console.error("Dropbox status error:", error);
+    setConnectorStatus((previous) => ({
+      ...previous,
+      dropbox: false,
+    }));
+    return false;
+  }
+};
+
+const handleDropboxConnect = async () => {
+  try {
+    setConnectorLoading(true);
+    setConnectorNotice("Preparing Dropbox connection...");
+
+    const idToken = await getFirebaseIdToken();
+    const response = await fetch(
+      `${API_BASE_URL}/api/connectors/dropbox/authorize`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data?.message || "Unable to start Dropbox connection."
+      );
+    }
+
+    window.location.href = data.authorizationUrl;
+  } catch (error) {
+    console.error("Dropbox connection error:", error);
+    setConnectorNotice(
+      error.message || "Unable to connect Dropbox."
+    );
+    setConnectorLoading(false);
+  }
+};
+
+const handleDropboxDisconnect = async () => {
+  try {
+    setConnectorLoading(true);
+    setConnectorNotice("Disconnecting Dropbox...");
+
+    const idToken = await getFirebaseIdToken();
+    const response = await fetch(
+      `${API_BASE_URL}/api/connectors/dropbox/disconnect`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data?.message || "Unable to disconnect Dropbox."
+      );
+    }
+
+    setConnectorStatus((previous) => ({
+      ...previous,
+      dropbox: false,
+    }));
+
+    setConnectorNotice("Dropbox disconnected.");
+  } catch (error) {
+    console.error("Dropbox disconnect error:", error);
+    setConnectorNotice(
+      error.message || "Unable to disconnect Dropbox."
+    );
+  } finally {
+    setConnectorLoading(false);
+  }
+};
+
 const handleConnectorClick = (connector) => {
   if (connector.id === "google-drive") {
     if (connectorStatus["google-drive"]) {
       handleGoogleDriveDisconnect();
     } else {
       handleGoogleDriveConnect();
+    }
+    return;
+  }
+
+  if (connector.id === "dropbox") {
+    if (connectorStatus.dropbox) {
+      handleDropboxDisconnect();
+    } else {
+      handleDropboxConnect();
     }
     return;
   }
@@ -430,7 +552,7 @@ const handleConnectorClick = (connector) => {
 
     let mounted = true;
 
-    const syncGoogleDriveStatus = async () => {
+    const syncConnectorStatus = async () => {
       const params = new URLSearchParams(window.location.search);
       const connector = params.get("connector");
       const status = params.get("status");
@@ -444,23 +566,47 @@ const handleConnectorClick = (connector) => {
       } else if (connector === "google-drive" && status === "error") {
         setConnectorsOpen(true);
         setConnectorNotice("Google Drive could not be connected.");
+      } else if (connector === "dropbox" && status === "connected") {
+        setConnectorsOpen(true);
+        setConnectorNotice("Dropbox connected successfully.");
+      } else if (connector === "dropbox" && status === "cancelled") {
+        setConnectorsOpen(true);
+        setConnectorNotice("Dropbox connection was cancelled.");
+      } else if (connector === "dropbox" && status === "error") {
+        setConnectorsOpen(true);
+        setConnectorNotice("Dropbox could not be connected.");
       }
 
       if (!firebaseUser) {
-        console.warn("Google Drive status check skipped: no Firebase user.");
+        console.warn("Connector status check skipped: no Firebase user.");
         if (connector || status) {
           window.history.replaceState({}, document.title, "/chat");
         }
         return;
       }
 
-      const connected = await checkGoogleDriveStatus();
+      const googleConnected = await checkGoogleDriveStatus();
+      const dropboxConnected = await checkDropboxStatus();
 
       if (!mounted) return;
 
-      if (connector === "google-drive" && status === "connected" && connected) {
+      if (
+        connector === "google-drive" &&
+        status === "connected" &&
+        googleConnected
+      ) {
         setConnectorNotice(
           "Google Drive connected successfully. Lawlite can now use your Drive documents."
+        );
+      }
+
+      if (
+        connector === "dropbox" &&
+        status === "connected" &&
+        dropboxConnected
+      ) {
+        setConnectorNotice(
+          "Dropbox connected successfully. Lawlite can now use your Dropbox files."
         );
       }
 
@@ -469,7 +615,7 @@ const handleConnectorClick = (connector) => {
       }
     };
 
-    syncGoogleDriveStatus();
+    syncConnectorStatus();
 
     return () => {
       mounted = false;
@@ -2608,7 +2754,10 @@ const handleRegenerateResponse = async (
                     }`}
                     disabled={
                       connectorLoading &&
-                      connector.id === "google-drive"
+                      (
+                        connector.id === "google-drive" ||
+                        connector.id === "dropbox"
+                      )
                     }
                     key={connector.id}
                     onClick={() =>

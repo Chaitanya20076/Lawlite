@@ -39,6 +39,10 @@ const {
 const {
   requireAuth,
 } = require("../middleware/authMiddleware");
+const {
+  classifyLawliteQuery,
+  getLawliteRefusalMessage,
+} = require("../services/connectorIntelligenceService");
 
 const {
   getFirestore,
@@ -1174,6 +1178,107 @@ router.post(
 
       const userMessage =
         latestUserMessage.content;
+      /*
+|--------------------------------------------------------------------------
+| LAWLITE DOMAIN GUARD
+|--------------------------------------------------------------------------
+|
+| Lawlite is a specialized legal assistant.
+|
+| Clearly off-topic requests are refused BEFORE:
+|
+| - connector retrieval
+| - web search
+| - Sarvam
+|
+| This keeps Lawlite from behaving like a general-purpose chatbot.
+|
+*/
+
+const lawliteClassification =
+  classifyLawliteQuery(
+    userMessage
+  );
+
+console.log(
+  "🧠 Lawlite query classification:",
+  {
+    domain:
+      lawliteClassification.domain,
+
+    confidence:
+      lawliteClassification.confidence,
+
+    connectors:
+      lawliteClassification.connectors,
+  }
+);
+
+
+if (
+  !lawliteClassification.allowed
+) {
+  console.log(
+    "🛑 Lawlite refused off-topic request:",
+    userMessage
+  );
+
+  return res.json({
+    success: true,
+
+    message:
+      getLawliteRefusalMessage(),
+
+    lawliteRefused:
+      true,
+
+    lawliteDomain:
+      lawliteClassification.domain,
+
+    lawliteConfidence:
+      lawliteClassification.confidence,
+
+    webSearchUsed:
+      false,
+
+    driveSearchUsed:
+      false,
+
+    driveSources: [],
+
+    dropboxSearchUsed:
+      false,
+
+    dropboxSources: [],
+
+    notionSearchUsed:
+      false,
+
+    notionSources: [],
+
+    gmailSearchUsed:
+      false,
+
+    gmailSources: [],
+
+    githubSearchUsed:
+      false,
+
+    githubSources: [],
+
+    driveBrowseUsed:
+      false,
+
+    driveFolderUsed:
+      false,
+
+    dropboxBrowseUsed:
+      false,
+
+    dropboxFolderUsed:
+      false,
+  });
+}
 
       /*
       |--------------------------------------------------------------------------

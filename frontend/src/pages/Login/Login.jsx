@@ -176,7 +176,9 @@ const Login = () => {
       setSuccess("Signed in successfully. Welcome back to Lawlite!");
 
       setTimeout(() => {
-        navigate("/");
+        navigate("/chat", {
+  replace: true,
+});
       }, 700);
     } catch (firebaseError) {
       console.error("Email sign-in error:", firebaseError);
@@ -229,7 +231,9 @@ const Login = () => {
       );
 
       setTimeout(() => {
-        navigate("/");
+        navigate("/chat", {
+  replace: true,
+});
       }, 700);
     } catch (firebaseError) {
       console.error("Google sign-in error:", firebaseError);

@@ -3540,3 +3540,806 @@ body,
 [data-theme="dark"] .chat-connector-card.connected .chat-connector-arrow {
   color: #3fb950;
 }
+/* =========================================================
+   LAWLITE MARKDOWN RESPONSE STYLING
+   ========================================================= */
+
+.chat-message-markdown {
+  width: 100%;
+  min-width: 0;
+
+  color: #43392f;
+  font-size: 12px;
+  line-height: 1.75;
+
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+[data-theme="dark"]
+  .chat-message-markdown {
+  color: #d3ccbf;
+}
+
+
+/* =========================================================
+   PARAGRAPHS
+   ========================================================= */
+
+.chat-message-markdown p {
+  margin: 0 0 12px;
+}
+
+.chat-message-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+
+/* =========================================================
+   HEADINGS
+   ========================================================= */
+
+.chat-message-markdown h1,
+.chat-message-markdown h2,
+.chat-message-markdown h3,
+.chat-message-markdown h4,
+.chat-message-markdown h5,
+.chat-message-markdown h6 {
+  margin: 20px 0 9px;
+
+  color: #30271f;
+
+  font-weight: 750;
+  line-height: 1.3;
+
+  letter-spacing: -0.2px;
+}
+
+[data-theme="dark"]
+  .chat-message-markdown h1,
+[data-theme="dark"]
+  .chat-message-markdown h2,
+[data-theme="dark"]
+  .chat-message-markdown h3,
+[data-theme="dark"]
+  .chat-message-markdown h4,
+[data-theme="dark"]
+  .chat-message-markdown h5,
+[data-theme="dark"]
+  .chat-message-markdown h6 {
+  color: #eee7db;
+}
+
+.chat-message-markdown h1 {
+  font-size: 20px;
+}
+
+.chat-message-markdown h2 {
+  font-size: 16px;
+}
+
+.chat-message-markdown h3 {
+  font-size: 14px;
+}
+
+.chat-message-markdown h4,
+.chat-message-markdown h5,
+.chat-message-markdown h6 {
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   BOLD / ITALIC
+   ========================================================= */
+
+.chat-message-markdown strong {
+  color: #2f261f;
+  font-weight: 750;
+}
+
+[data-theme="dark"]
+  .chat-message-markdown strong {
+  color: #f1e9dc;
+}
+
+.chat-message-markdown em {
+  font-style: italic;
+}
+
+
+/* =========================================================
+   LISTS
+   ========================================================= */
+
+.chat-message-markdown ul,
+.chat-message-markdown ol {
+  margin: 9px 0 14px;
+  padding-left: 22px;
+}
+
+.chat-message-markdown ul {
+  list-style: disc;
+}
+
+.chat-message-markdown ol {
+  list-style: decimal;
+}
+
+.chat-message-markdown li {
+  margin: 4px 0;
+  padding-left: 2px;
+}
+
+.chat-message-markdown li::marker {
+  color: #c9783f;
+}
+
+[data-theme="dark"]
+  .chat-message-markdown li::marker {
+  color: #d2aa3a;
+}
+
+
+/* =========================================================
+   NESTED LISTS
+   ========================================================= */
+
+.chat-message-markdown li > ul,
+.chat-message-markdown li > ol {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+
+/* =========================================================
+   LINKS
+   ========================================================= */
+
+.chat-message-markdown a {
+  color: #a86432;
+
+  text-decoration: underline;
+  text-decoration-color: rgba(
+    168,
+    100,
+    50,
+    0.35
+  );
+  text-underline-offset: 2px;
+}
+
+.chat-message-markdown a:hover {
+  text-decoration-color: currentColor;
+}
+
+[data-theme="dark"]
+  .chat-message-markdown a {
+  color: #d2aa3a;
+}
+
+
+/* =========================================================
+   BLOCKQUOTES
+   ========================================================= */
+
+.chat-message-markdown blockquote {
+  margin: 13px 0;
+
+  padding: 9px 14px;
+
+  border-left: 3px solid #c9783f;
+
+  color: #66584c;
+
+  background:
+    rgba(201, 120, 63, 0.055);
+
+  border-radius: 0 8px 8px 0;
+}
+
+[data-theme="dark"]
+  .chat-message-markdown blockquote {
+  border-left-color: #d2aa3a;
+
+  color: #c5bbad;
+
+  background:
+    rgba(210, 170, 58, 0.055);
+}
+
+
+/* =========================================================
+   HORIZONTAL RULE
+   ========================================================= */
+
+.chat-message-markdown hr {
+  margin: 18px 0;
+
+  border: 0;
+  border-top: 1px solid
+    rgba(100, 90, 80, 0.16);
+}
+
+[data-theme="dark"]
+  .chat-message-markdown hr {
+  border-top-color:
+    rgba(255, 255, 255, 0.09);
+}
+
+
+/* =========================================================
+   INLINE CODE
+   ========================================================= */
+
+.chat-message-markdown
+  :not(pre)
+  > code {
+  display: inline;
+
+  padding: 2px 6px;
+
+  border-radius: 5px;
+
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    Menlo,
+    monospace;
+
+  font-size: 0.92em;
+
+  color: #624523;
+
+  background:
+    rgba(201, 120, 63, 0.09);
+}
+
+[data-theme="dark"]
+  .chat-message-markdown
+  :not(pre)
+  > code {
+  color: #e4c77a;
+
+  background:
+    rgba(210, 170, 58, 0.09);
+}
+
+
+/* =========================================================
+   COPY-PASTE / CODE BLOCK
+   ========================================================= */
+
+.chat-message-markdown pre {
+  position: relative;
+
+  width: 100%;
+
+  margin: 14px 0;
+
+  padding: 16px 17px;
+
+  overflow-x: auto;
+
+  border: 1px solid
+    rgba(150, 130, 105, 0.16);
+
+  border-radius: 10px;
+
+  background: #f1eee7;
+
+  box-shadow:
+    0 6px 20px
+      rgba(55, 42, 30, 0.045);
+
+  scrollbar-width: thin;
+}
+
+[data-theme="dark"]
+  .chat-message-markdown pre {
+  border-color:
+    rgba(255, 255, 255, 0.09);
+
+  background: #151515;
+
+  box-shadow:
+    0 8px 24px
+      rgba(0, 0, 0, 0.22);
+}
+
+
+/* =========================================================
+   CODE INSIDE BLOCK
+   ========================================================= */
+
+.chat-message-markdown pre code {
+  display: block;
+
+  min-width: max-content;
+
+  padding: 0;
+
+  border: 0;
+  border-radius: 0;
+
+  background: transparent;
+
+  color: #2f2923;
+
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    Menlo,
+    monospace;
+
+  font-size: 11px;
+  line-height: 1.75;
+
+  white-space: pre;
+}
+
+[data-theme="dark"]
+  .chat-message-markdown pre code {
+  color: #e4dfd6;
+}
+
+
+/* =========================================================
+   CODE BLOCK SCROLLBAR
+   ========================================================= */
+
+.chat-message-markdown pre::-webkit-scrollbar {
+  height: 6px;
+}
+
+.chat-message-markdown pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-message-markdown pre::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+
+  background:
+    rgba(120, 100, 80, 0.25);
+}
+
+[data-theme="dark"]
+  .chat-message-markdown pre::-webkit-scrollbar-thumb {
+  background:
+    rgba(255, 255, 255, 0.15);
+}
+
+
+/* =========================================================
+   TABLES
+   ========================================================= */
+
+.chat-message-markdown table {
+  width: 100%;
+
+  margin: 14px 0;
+
+  border-collapse: collapse;
+
+  font-size: 11px;
+}
+
+.chat-message-markdown th,
+.chat-message-markdown td {
+  padding: 8px 9px;
+
+  text-align: left;
+  vertical-align: top;
+
+  border: 1px solid
+    rgba(120, 105, 90, 0.16);
+}
+
+.chat-message-markdown th {
+  font-weight: 750;
+
+  background:
+    rgba(201, 120, 63, 0.055);
+}
+
+[data-theme="dark"]
+  .chat-message-markdown th,
+[data-theme="dark"]
+  .chat-message-markdown td {
+  border-color:
+    rgba(255, 255, 255, 0.09);
+}
+
+[data-theme="dark"]
+  .chat-message-markdown th {
+  background:
+    rgba(210, 170, 58, 0.055);
+}
+
+
+/* =========================================================
+   IMAGES
+   ========================================================= */
+
+.chat-message-markdown img {
+  display: block;
+
+  max-width: 100%;
+  height: auto;
+
+  margin: 12px 0;
+
+  border-radius: 9px;
+}
+
+
+/* =========================================================
+   FIRST / LAST CHILD CLEANUP
+   ========================================================= */
+
+.chat-message-markdown
+  > :first-child {
+  margin-top: 0;
+}
+
+.chat-message-markdown
+  > :last-child {
+  margin-bottom: 0;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+  .chat-message-markdown {
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .chat-message-markdown h1 {
+    font-size: 18px;
+  }
+
+  .chat-message-markdown h2 {
+    font-size: 15px;
+  }
+
+  .chat-message-markdown h3 {
+    font-size: 13px;
+  }
+
+  .chat-message-markdown pre {
+    padding: 13px 14px;
+
+    border-radius: 8px;
+  }
+
+  .chat-message-markdown pre code {
+    font-size: 10px;
+  }
+
+  .chat-message-markdown table {
+    display: block;
+
+    overflow-x: auto;
+
+    white-space: nowrap;
+  }
+}
+/* =========================================================
+   COPYABLE CODE BLOCK
+   ========================================================= */
+
+.chat-code-block {
+  width: 100%;
+  margin: 14px 0;
+
+  overflow: hidden;
+
+  border: 1px solid
+    rgba(150, 130, 105, 0.16);
+
+  border-radius: 10px;
+
+  background: #f1eee7;
+
+  box-shadow:
+    0 6px 20px
+      rgba(55, 42, 30, 0.045);
+}
+
+[data-theme="dark"]
+  .chat-code-block {
+  border-color:
+    rgba(255, 255, 255, 0.09);
+
+  background: #151515;
+
+  box-shadow:
+    0 8px 24px
+      rgba(0, 0, 0, 0.22);
+}
+
+
+/* =========================================================
+   CODE BLOCK HEADER
+   ========================================================= */
+
+.chat-code-block-header {
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 10px 0 13px;
+
+  border-bottom: 1px solid
+    rgba(120, 105, 90, 0.13);
+
+  background:
+    rgba(255, 255, 255, 0.28);
+}
+
+[data-theme="dark"]
+  .chat-code-block-header {
+  border-bottom-color:
+    rgba(255, 255, 255, 0.07);
+
+  background:
+    rgba(255, 255, 255, 0.025);
+}
+
+
+/* =========================================================
+   HEADER LABEL
+   ========================================================= */
+
+.chat-code-block-header span:first-child {
+  color: #887d71;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  letter-spacing: 0.35px;
+}
+
+[data-theme="dark"]
+  .chat-code-block-header span:first-child {
+  color: #8e877d;
+}
+
+
+/* =========================================================
+   COPY BUTTON
+   ========================================================= */
+
+.chat-code-copy-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  padding: 5px 7px;
+
+  border: 1px solid
+    rgba(120, 105, 90, 0.13);
+
+  border-radius: 6px;
+
+  color: #71675d;
+
+  background: transparent;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.chat-code-copy-button:hover {
+  border-color:
+    rgba(201, 120, 63, 0.28);
+
+  color: #a86432;
+
+  background:
+    rgba(201, 120, 63, 0.06);
+}
+
+[data-theme="dark"]
+  .chat-code-copy-button {
+  border-color:
+    rgba(255, 255, 255, 0.08);
+
+  color: #aaa39a;
+}
+
+[data-theme="dark"]
+  .chat-code-copy-button:hover {
+  border-color:
+    rgba(210, 170, 58, 0.28);
+
+  color: #d2aa3a;
+
+  background:
+    rgba(210, 170, 58, 0.055);
+}
+
+
+/* =========================================================
+   CODE CONTENT
+   ========================================================= */
+
+.chat-code-block pre {
+  width: 100%;
+
+  margin: 0;
+
+  padding: 15px;
+
+  overflow-x: auto;
+
+  border: 0;
+
+  border-radius: 0;
+
+  background: transparent;
+
+  box-shadow: none;
+}
+
+.chat-code-block pre code {
+  display: block;
+
+  min-width: max-content;
+
+  padding: 0;
+
+  color: #2f2923;
+
+  background: transparent;
+
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    Menlo,
+    monospace;
+
+  font-size: 11px;
+
+  line-height: 1.75;
+
+  white-space: pre;
+}
+
+[data-theme="dark"]
+  .chat-code-block pre code {
+  color: #e4dfd6;
+}
+
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+.chat-code-block pre::-webkit-scrollbar {
+  height: 6px;
+}
+
+.chat-code-block pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-code-block pre::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+
+  background:
+    rgba(120, 100, 80, 0.25);
+}
+
+[data-theme="dark"]
+  .chat-code-block pre::-webkit-scrollbar-thumb {
+  background:
+    rgba(255, 255, 255, 0.15);
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+  .chat-code-block-header {
+    height: 32px;
+
+    padding-left: 10px;
+  }
+
+  .chat-code-block pre {
+    padding: 12px;
+  }
+
+  .chat-code-block pre code {
+    font-size: 10px;
+  }
+}
+/* =========================================================
+   CODE BLOCK COPY BUTTON - FINAL OVERRIDE
+   ========================================================= */
+
+.chat-code-copy-button {
+  appearance: none;
+  -webkit-appearance: none;
+
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+
+  gap: 5px;
+
+  height: 26px;
+
+  padding: 0 8px;
+
+  border: 1px solid
+    rgba(120, 105, 90, 0.16);
+
+  border-radius: 6px;
+
+  outline: none;
+
+  cursor: pointer;
+
+  user-select: none;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.chat-code-copy-button:active {
+  transform: scale(0.96);
+}
+
+.chat-code-copy-button span {
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.chat-code-copy-button svg {
+  flex-shrink: 0;
+}
+
+[data-theme="dark"]
+  .chat-code-copy-button {
+  border-color:
+    rgba(255, 255, 255, 0.09);
+
+  color: #aaa39a;
+
+  background: transparent;
+}
+
+[data-theme="dark"]
+  .chat-code-copy-button:hover {
+  border-color:
+    rgba(210, 170, 58, 0.28);
+
+  color: #d2aa3a;
+
+  background:
+    rgba(210, 170, 58, 0.06);
+}

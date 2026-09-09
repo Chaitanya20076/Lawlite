@@ -179,6 +179,7 @@ const [connectorNotice, setConnectorNotice] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [responseFeedback, setResponseFeedback] = useState({});
 const [copiedResponseId, setCopiedResponseId] = useState(null);
+const [copiedCodeBlockId, setCopiedCodeBlockId] = useState(null);
 
   const [connectorStatus, setConnectorStatus] = useState({
   "google-drive": false,
@@ -1310,11 +1311,11 @@ setConnectorNotice("");
    */
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "end",
-    });
-  }, [messages]);
+  messagesEndRef.current?.scrollIntoView({
+    behavior: "auto",
+    block: "end",
+  });
+}, [messages]);
 
   /*
    * =========================================
@@ -1631,54 +1632,100 @@ const formatDriveTree = (
    * TYPEWRITER EFFECT
    * =========================================
    */
+/*
+ * =========================================
+ * COPY MARKDOWN CODE BLOCK
+ * =========================================
+ */
 
-  const typeAssistantMessage = (
-    fullText,
-    messageId
-  ) => {
-    return new Promise((resolve) => {
-      let currentIndex = 0;
+const handleCopyCodeBlock = async (
+  code,
+  blockId
+) => {
+  if (!code) {
+    return;
+  }
 
-      const interval = setInterval(() => {
-        currentIndex += 2;
+  try {
+    if (
+      navigator.clipboard &&
+      typeof navigator.clipboard.writeText === "function"
+    ) {
+      await navigator.clipboard.writeText(code);
+    } else {
+      const textArea = document.createElement("textarea");
+      textArea.value = code;
+      textArea.setAttribute("readonly", "");
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      textArea.style.pointerEvents = "none";
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+    }
 
-        setMessages((previous) =>
-          previous.map((item) =>
-            item.id === messageId
-              ? {
-                  ...item,
-                  text: fullText.slice(
-                    0,
-                    currentIndex
-                  ),
-                  typing:
-                    currentIndex <
-                    fullText.length,
-                }
-              : item
-          )
-        );
+    setCopiedCodeBlockId(blockId);
 
-        if (
-          currentIndex >=
-          fullText.length
-        ) {
-          clearInterval(interval);
-
-          typingIntervalsRef.current =
-            typingIntervalsRef.current.filter(
-              (item) => item !== interval
-            );
-
-          resolve();
-        }
-      }, 18);
-
-      typingIntervalsRef.current.push(
-        interval
+    setTimeout(() => {
+      setCopiedCodeBlockId((current) =>
+        current === blockId ? null : current
       );
-    });
-  };
+    }, 1800);
+  } catch (error) {
+    console.error(
+      "Copy code block failed:",
+      error
+    );
+  }
+};
+  const typeAssistantMessage = (
+  fullText,
+  messageId
+) => {
+  return new Promise((resolve) => {
+    let currentIndex = 0;
+
+    const interval = setInterval(() => {
+      currentIndex += 4;
+
+      setMessages((previous) =>
+        previous.map((item) =>
+          item.id === messageId
+            ? {
+                ...item,
+                text: fullText.slice(
+                  0,
+                  currentIndex
+                ),
+                typing:
+                  currentIndex <
+                  fullText.length,
+              }
+            : item
+        )
+      );
+
+      if (
+        currentIndex >=
+        fullText.length
+      ) {
+        clearInterval(interval);
+
+        typingIntervalsRef.current =
+          typingIntervalsRef.current.filter(
+            (item) => item !== interval
+          );
+
+        resolve();
+      }
+    }, 18);
+
+    typingIntervalsRef.current.push(
+      interval
+    );
+  });
+};
 
   /*
    * =========================================
@@ -2709,7 +2756,78 @@ const handleRegenerateResponse = async (
   </span>
 
   <div className="chat-message-markdown">
-    <ReactMarkdown>
+    <ReactMarkdown
+      components={{
+        pre({ children }) {
+          const blockId = `${item.id}-code`;
+
+          let codeText = "";
+
+          const codeElement =
+            Array.isArray(children)
+              ? children.find(
+                  (child) =>
+                    child?.props?.children != null
+                )
+              : children;
+
+          if (codeElement) {
+            const rawCode =
+              codeElement.props?.children;
+
+            codeText = Array.isArray(rawCode)
+              ? rawCode.join("")
+              : String(rawCode ?? "");
+          }
+
+          const isCopied =
+            copiedCodeBlockId === blockId;
+
+          return (
+            <div className="chat-code-block">
+              <div className="chat-code-block-header">
+                <span>Copyable text</span>
+
+                <button
+                  type="button"
+                  className="chat-code-copy-button"
+                  onClick={() =>
+                    handleCopyCodeBlock(
+                      codeText,
+                      blockId
+                    )
+                  }
+                  title={
+                    isCopied
+                      ? "Copied"
+                      : "Copy"
+                  }
+                  aria-label={
+                    isCopied
+                      ? "Copied"
+                      : "Copy code block"
+                  }
+                >
+                  {isCopied ? (
+                    <Check size={13} />
+                  ) : (
+                    <Clipboard size={13} />
+                  )}
+
+                  <span>
+                    {isCopied
+                      ? "Copied"
+                      : "Copy"}
+                  </span>
+                </button>
+              </div>
+
+              <pre>{children}</pre>
+            </div>
+          );
+        },
+      }}
+    >
       {item.text}
     </ReactMarkdown>
 

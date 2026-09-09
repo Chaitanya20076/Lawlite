@@ -1,5 +1,18 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+} from "firebase/auth";
+
+import {
+  auth,
+  googleProvider,
+} from "../../config/firebase";
 
 import {
   ArrowRight,
@@ -14,9 +27,6 @@ import {
   FileText,
   Check,
 } from "lucide-react";
-
-import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "../../config/firebase";
 
 import "./Signup.css";
 
@@ -146,13 +156,17 @@ const Signup = () => {
 
     // Name validation
     if (!formData.name.trim()) {
-      setError("Please enter your full name.");
+      setError(
+        "Please enter your full name."
+      );
       return;
     }
 
     // Email validation
     if (!formData.email.trim()) {
-      setError("Please enter your email address.");
+      setError(
+        "Please enter your email address."
+      );
       return;
     }
 
@@ -169,7 +183,9 @@ const Signup = () => {
       formData.password !==
       formData.confirmPassword
     ) {
-      setError("Passwords do not match.");
+      setError(
+        "Passwords do not match."
+      );
       return;
     }
 
@@ -212,37 +228,55 @@ const Signup = () => {
   // VERIFY OTP
   // ========================================
 
-  const handleVerifyOtp = async (event) => {
-    event.preventDefault();
+  const handleVerifyOtp = async (
+    e
+  ) => {
+    e.preventDefault();
 
     setError("");
     setSuccess("");
 
-    if (otp.length !== 6) {
+    if (
+      otp.length !== 6
+    ) {
       setError(
         "Please enter the 6-digit verification code."
       );
+
       return;
     }
 
     try {
       setLoading(true);
 
-      const response = await fetch(
-        `${API_URL}/auth/verify-otp`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: formData.email.trim(),
-            otp,
-          }),
-        }
-      );
+      /*
+       * ==========================================
+       * VERIFY OTP WITH BACKEND
+       * ==========================================
+       */
 
-      const data = await response.json();
+      const response =
+        await fetch(
+          `${API_URL}/auth/verify-otp`,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              email:
+                formData.email.trim(),
+
+              otp,
+            }),
+          }
+        );
+
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -251,37 +285,75 @@ const Signup = () => {
         );
       }
 
+      /*
+       * ==========================================
+       * ACCOUNT CREATED
+       * ==========================================
+       */
+
       setSuccess(
-        "Email verified successfully. Your account has been created."
+        "Your account has been created. Setting up your Lawlite workspace..."
       );
 
       /*
-       * The backend has now created the Firebase
-       * account with emailVerified: true.
+       * ==========================================
+       * SIGN THE NEW USER INTO FIREBASE
+       * ==========================================
        *
-       * For now, send the user to Login.
+       * The backend creates the Firebase account,
+       * but that does not automatically create the
+       * browser's Firebase authentication session.
        *
-       * Later we'll add the proper Firebase
-       * session/token flow here.
+       * Sign in here using the same credentials.
+       */
+
+      await signInWithEmailAndPassword(
+        auth,
+        formData.email.trim(),
+        formData.password
+      );
+
+      /*
+       * ==========================================
+       * CLEAR OLD LOCAL STATE
+       * ==========================================
+       *
+       * This prevents a previous account's local
+       * onboarding/chat state from appearing for
+       * the newly created account.
+       */
+
+      localStorage.removeItem(
+        "lawlite-onboarding"
+      );
+
+      localStorage.removeItem(
+        "lawlite-active-chat-id"
+      );
+
+      /*
+       * ==========================================
+       * GO TO ONBOARDING
+       * ==========================================
        */
 
       setTimeout(() => {
-        navigate("/login", {
-          state: {
-            email: formData.email.trim(),
-            signupSuccess: true,
-          },
-        });
-      }, 1000);
+        navigate(
+          "/onboarding",
+          {
+            replace: true,
+          }
+        );
+      }, 500);
     } catch (err) {
       console.error(
-        "OTP verification error:",
+        "Signup verification error:",
         err
       );
 
       setError(
         err.message ||
-          "Unable to verify the code. Please try again."
+          "Something went wrong while creating your account."
       );
     } finally {
       setLoading(false);
@@ -325,108 +397,124 @@ const Signup = () => {
   // GOOGLE SIGNUP
   // ========================================
 
-  const handleGoogleSignup = async () => {
-    setError("");
-    setSuccess("");
+  const handleGoogleSignup =
+    async () => {
+      setError("");
+      setSuccess("");
 
-    // User must accept terms before
-    // starting Google authentication.
-    if (!formData.terms) {
-      setError(
-        "Please accept the Terms & Conditions to continue."
-      );
-
-      return;
-    }
-
-    try {
-      setGoogleLoading(true);
-
-      const result = await signInWithPopup(
-        auth,
-        googleProvider
-      );
-
-      const user = result.user;
-
-      console.log(
-        "Google signup successful:",
-        {
-          uid: user.uid,
-          name: user.displayName,
-          email: user.email,
-          emailVerified:
-            user.emailVerified,
-        }
-      );
-
-      setSuccess(
-        `Welcome to Lawlite${
-          user.displayName
-            ? `, ${user.displayName}`
-            : ""
-        }!`
-      );
-
-      /*
-       * Firebase has successfully authenticated
-       * the Google account.
-       *
-       * For now we redirect to the homepage.
-       *
-       * Later we'll send the Firebase ID token
-       * to the Lawlite backend so both Google
-       * users and OTP users use the same backend
-       * authentication/session system.
-       */
-
-      setTimeout(() => {
-        navigate("/");
-      }, 800);
-    } catch (err) {
-      console.error(
-        "Google signup error:",
-        err
-      );
-
-      if (
-        err.code ===
-        "auth/popup-closed-by-user"
-      ) {
+      // User must accept terms before
+      // starting Google authentication.
+      if (!formData.terms) {
         setError(
-          "Google sign-up was cancelled."
+          "Please accept the Terms & Conditions to continue."
         );
-      } else if (
-        err.code ===
-        "auth/popup-blocked"
-      ) {
-        setError(
-          "Your browser blocked the Google sign-up popup."
-        );
-      } else if (
-        err.code ===
-        "auth/account-exists-with-different-credential"
-      ) {
-        setError(
-          "An account already exists with this email using another sign-in method."
-        );
-      } else if (
-        err.code ===
-        "auth/network-request-failed"
-      ) {
-        setError(
-          "Network error. Please check your internet connection."
-        );
-      } else {
-        setError(
-          err.message ||
-            "Google sign-up failed. Please try again."
-        );
+
+        return;
       }
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
+
+      try {
+        setGoogleLoading(true);
+
+        const result =
+          await signInWithPopup(
+            auth,
+            googleProvider
+          );
+
+        const user =
+          result.user;
+
+        console.log(
+          "Google signup successful:",
+          {
+            uid: user.uid,
+            name:
+              user.displayName,
+            email:
+              user.email,
+            emailVerified:
+              user.emailVerified,
+          }
+        );
+
+        setSuccess(
+          `Welcome to Lawlite${
+            user.displayName
+              ? `, ${user.displayName}`
+              : ""
+          }! Setting up your workspace...`
+        );
+
+        /*
+         * ==========================================
+         * GOOGLE AUTHENTICATION COMPLETE
+         * ==========================================
+         *
+         * Google sign-up is a new-user flow,
+         * so send the authenticated user through
+         * onboarding before entering the chat.
+         */
+
+        localStorage.removeItem(
+          "lawlite-onboarding"
+        );
+
+        localStorage.removeItem(
+          "lawlite-active-chat-id"
+        );
+
+        setTimeout(() => {
+          navigate(
+            "/onboarding",
+            {
+              replace: true,
+            }
+          );
+        }, 500);
+      } catch (err) {
+        console.error(
+          "Google signup error:",
+          err
+        );
+
+        if (
+          err.code ===
+          "auth/popup-closed-by-user"
+        ) {
+          setError(
+            "Google sign-up was cancelled."
+          );
+        } else if (
+          err.code ===
+          "auth/popup-blocked"
+        ) {
+          setError(
+            "Your browser blocked the Google sign-up popup."
+          );
+        } else if (
+          err.code ===
+          "auth/account-exists-with-different-credential"
+        ) {
+          setError(
+            "An account already exists with this email using another sign-in method."
+          );
+        } else if (
+          err.code ===
+          "auth/network-request-failed"
+        ) {
+          setError(
+            "Network error. Please check your internet connection."
+          );
+        } else {
+          setError(
+            err.message ||
+              "Google sign-up failed. Please try again."
+          );
+        }
+      } finally {
+        setGoogleLoading(false);
+      }
+    };
 
   // ========================================
   // RENDER
@@ -743,6 +831,7 @@ const Signup = () => {
 
           {step === "signup" && (
             <>
+
               {/* ==================================
                   HEADING
               ================================== */}
@@ -953,8 +1042,12 @@ const Signup = () => {
                   <input
                     type="checkbox"
                     name="terms"
-                    checked={formData.terms}
-                    onChange={handleChange}
+                    checked={
+                      formData.terms
+                    }
+                    onChange={
+                      handleChange
+                    }
                     required
                   />
 
@@ -966,7 +1059,7 @@ const Signup = () => {
 
                   <span>
 
-                    I agree to the{" "}
+                    I agree to{" "}
 
                     <a
                       href="/terms"
@@ -1067,7 +1160,9 @@ const Signup = () => {
                 <button
                   type="button"
                   className="signup-google-button"
-                  onClick={handleGoogleSignup}
+                  onClick={
+                    handleGoogleSignup
+                  }
                   disabled={
                     loading ||
                     googleLoading
@@ -1099,13 +1194,13 @@ const Signup = () => {
                   Already have an account?
                 </span>
 
-                <a href="/login">
+                <Link to="/login">
 
                   Sign in
 
                   <ArrowRight size={14} />
 
-                </a>
+                </Link>
 
               </div>
 
@@ -1158,7 +1253,9 @@ const Signup = () => {
 
               <form
                 className="signup-form signup-otp-form"
-                onSubmit={handleVerifyOtp}
+                onSubmit={
+                  handleVerifyOtp
+                }
               >
 
                 <div className="signup-form-field">
@@ -1175,7 +1272,9 @@ const Signup = () => {
                     autoComplete="one-time-code"
                     placeholder="000000"
                     value={otp}
-                    onChange={handleOtpChange}
+                    onChange={
+                      handleOtpChange
+                    }
                     maxLength={6}
                     autoFocus
                   />
@@ -1233,7 +1332,9 @@ const Signup = () => {
 
                 <button
                   type="button"
-                  onClick={handleResendOtp}
+                  onClick={
+                    handleResendOtp
+                  }
                   disabled={loading}
                 >
                   Resend code

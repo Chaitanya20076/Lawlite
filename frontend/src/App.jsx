@@ -32,6 +32,25 @@ import { auth } from "./config/firebase";
 
 /*
 |--------------------------------------------------------------------------
+| GOOGLE LOGIN CHECK FLAG
+|--------------------------------------------------------------------------
+|
+| While the Google popup is being processed, Firebase may temporarily
+| report a signed-in user before Login.jsx has determined whether this
+| is a brand-new Google account or an existing Lawlite account.
+|
+| This flag tells the route guard:
+|
+| "Do not redirect this user to Chat yet."
+|
+*/
+
+const GOOGLE_LOGIN_CHECK_KEY =
+  "lawlite-google-login-check";
+
+
+/*
+|--------------------------------------------------------------------------
 | AUTH LOADING
 |--------------------------------------------------------------------------
 */
@@ -43,10 +62,8 @@ const AuthLoading = () => {
         minHeight: "100vh",
         display: "grid",
         placeItems: "center",
-        background:
-          "var(--bg-color)",
-        color:
-          "var(--text-primary)",
+        background: "var(--bg-color)",
+        color: "var(--text-primary)",
       }}
     >
       <div
@@ -101,10 +118,8 @@ const AuthLoading = () => {
 |
 | Used for:
 | - /onboarding
+| - /loading
 | - /chat
-|
-| If Firebase says there is no authenticated user,
-| send the visitor to /login.
 |
 */
 
@@ -135,11 +150,16 @@ const ProtectedRoute = ({
 | LOGIN ROUTE
 |--------------------------------------------------------------------------
 |
-| Logged-out user:
-|   /login
+| Normally:
 |
-| Already logged-in user:
-|   /chat
+| logged out  -> /login
+| logged in   -> /chat
+|
+| EXCEPTION:
+|
+| When Google Login is currently being checked, Firebase may already
+| report a user. We MUST keep the Login page mounted until Login.jsx
+| decides whether the Google account is new or existing.
 |
 */
 
@@ -147,9 +167,31 @@ const LoginRoute = ({
   user,
   loading,
 }) => {
+  const googleLoginCheck =
+    sessionStorage.getItem(
+      GOOGLE_LOGIN_CHECK_KEY
+    ) === "true";
+
+
   if (loading) {
     return <AuthLoading />;
   }
+
+
+  /*
+   * IMPORTANT:
+   *
+   * Do not redirect to Chat while Google authentication is still being
+   * checked.
+   */
+
+  if (
+    user &&
+    googleLoginCheck
+  ) {
+    return <Login />;
+  }
+
 
   if (user) {
     return (
@@ -160,6 +202,7 @@ const LoginRoute = ({
     );
   }
 
+
   return <Login />;
 };
 
@@ -169,8 +212,7 @@ const LoginRoute = ({
 | SIGNUP ROUTE
 |--------------------------------------------------------------------------
 |
-| If already authenticated, don't let the user start
-| another signup flow.
+| Normally an authenticated user should not start another signup flow.
 |
 */
 
@@ -182,6 +224,7 @@ const SignupRoute = ({
     return <AuthLoading />;
   }
 
+
   if (user) {
     return (
       <Navigate
@@ -190,6 +233,7 @@ const SignupRoute = ({
       />
     );
   }
+
 
   return <Signup />;
 };
@@ -205,10 +249,12 @@ const App = () => {
   const location =
     useLocation();
 
+
   const [
     authLoading,
     setAuthLoading,
   ] = useState(true);
+
 
   const [
     user,
@@ -227,21 +273,25 @@ const App = () => {
       onAuthStateChanged(
         auth,
         (currentUser) => {
+
           console.log(
             "Lawlite auth state:",
             currentUser
               ? {
                   uid:
                     currentUser.uid,
+
                   email:
                     currentUser.email,
                 }
               : "Logged out"
           );
 
+
           setUser(
             currentUser
           );
+
 
           setAuthLoading(
             false
@@ -249,8 +299,10 @@ const App = () => {
         }
       );
 
+
     return () =>
       unsubscribe();
+
   }, []);
 
 
@@ -275,6 +327,7 @@ const App = () => {
         <Navbar />
       )}
 
+
       <main>
         <Routes>
 
@@ -289,6 +342,7 @@ const App = () => {
             }
           />
 
+
           <Route
             path="/terms"
             element={
@@ -296,12 +350,14 @@ const App = () => {
             }
           />
 
+
           <Route
             path="/privacy"
             element={
               <Privacy />
             }
           />
+
 
           <Route
             path="/contact"
@@ -312,7 +368,7 @@ const App = () => {
 
 
           {/* =====================================================
-              AUTH PAGES
+              LOGIN
           ===================================================== */}
 
           <Route
@@ -324,6 +380,11 @@ const App = () => {
               />
             }
           />
+
+
+          {/* =====================================================
+              SIGNUP
+          ===================================================== */}
 
           <Route
             path="/signup"
@@ -404,11 +465,13 @@ const App = () => {
         </Routes>
       </main>
 
+
       {!isAppPage && (
         <Footer />
       )}
     </>
   );
 };
+
 
 export default App;

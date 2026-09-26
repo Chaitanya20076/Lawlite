@@ -400,7 +400,6 @@ const detectResponseFormat =
       "give me the exact text",
       "give exact text",
       "just give me the text",
-      
     ];
 
     if (
@@ -718,6 +717,7 @@ Do not force the answer into a special format unless the user explicitly asks fo
 | GENERATE LAWLITE RESPONSE
 |--------------------------------------------------------------------------
 */
+
 const handleCopyCodeBlock = async (
   code,
   blockId
@@ -748,6 +748,8 @@ const handleCopyCodeBlock = async (
     );
   }
 };
+
+
 const generateChatResponse =
   async ({
     conversation,
@@ -1006,13 +1008,11 @@ ${webResults}
           return;
         }
 
-
         const role =
           message.role ===
           "assistant"
             ? "assistant"
             : "user";
-
 
         messages.push({
           role,
@@ -1048,97 +1048,772 @@ ${webResults}
 |--------------------------------------------------------------------------
 */
 
-const generateChatTitle =
-  async (
-    firstUserMessage
-  ) => {
-    if (
-      !firstUserMessage ||
-      !String(
-        firstUserMessage
-      ).trim()
+/**
+ * Prepare conversation content specifically for title generation.
+ *
+ * The title generator supports both:
+ *
+ * 1. A full conversation array (preferred)
+ * 2. A single string (backwards-compatible fallback)
+ *
+ * This keeps older callers working while allowing the frontend/backend
+ * to send enough context for a genuinely meaningful chat title.
+ */
+
+const prepareConversationForTitle = (
+  conversation
+) => {
+  if (
+    Array.isArray(conversation)
+  ) {
+    const cleanedConversation =
+      conversation
+        .filter(
+          (message) =>
+            message &&
+            (
+              message.role ===
+                "user" ||
+              message.role ===
+                "assistant"
+            ) &&
+            typeof message.content ===
+              "string" &&
+            message.content.trim()
+        )
+        .map(
+          (message) => ({
+            role:
+              message.role,
+
+            content:
+              message.content
+                .trim()
+                .replace(
+                  /\s+/g,
+                  " "
+                ),
+          })
+        );
+
+    /*
+     * Keep enough recent context for the model to understand
+     * the actual issue without making the title request large.
+     */
+    const recentMessages =
+      cleanedConversation.slice(-8);
+
+    const MAX_TITLE_CONTEXT_CHARS =
+      3500;
+
+    let totalCharacters = 0;
+    const selectedMessages = [];
+
+    for (
+      let index =
+        recentMessages.length - 1;
+      index >= 0;
+      index -= 1
     ) {
-      return "New Legal Conversation";
+      const currentMessage =
+        recentMessages[index];
+
+      const remainingCharacters =
+        MAX_TITLE_CONTEXT_CHARS -
+        totalCharacters;
+
+      if (
+        remainingCharacters <= 0
+      ) {
+        break;
+      }
+
+      const content =
+        currentMessage.content.slice(
+          0,
+          remainingCharacters
+        );
+
+      selectedMessages.unshift({
+        role:
+          currentMessage.role,
+
+        content,
+      });
+
+      totalCharacters +=
+        content.length;
     }
 
+    return selectedMessages;
+  }
 
-    const messages = [
-      {
-        role: "system",
-
-        content: `
-Generate a short title for this Lawlite conversation.
-
-Rules:
-- Maximum 6 words.
-- Keep it natural.
-- No quotation marks.
-- No emojis.
-- Do not explain the title.
-- Return only the title.
-`.trim(),
-      },
-
+  /*
+   * Backwards compatibility:
+   * older callers may still pass only the first user message.
+   */
+  if (
+    typeof conversation ===
+    "string" &&
+    conversation.trim()
+  ) {
+    return [
       {
         role: "user",
-
         content:
-          String(
-            firstUserMessage
-          ).trim(),
+          conversation
+            .trim()
+            .replace(
+              /\s+/g,
+              " "
+            ),
       },
     ];
+  }
+
+  return [];
+};
 
 
-    try {
-      const title =
-        await callSarvam({
-          messages,
+/*
+ * Remove common conversational words before comparing a generated
+ * title with the opening of the user's prompt.
+ */
 
-          maxTokens: 80,
+const normalizeTitleComparisonWords = (
+  value
+) => {
+  const stopWords = new Set([
+    "a",
+    "an",
+    "and",
+    "are",
+    "be",
+    "but",
+    "can",
+    "could",
+    "do",
+    "does",
+    "for",
+    "from",
+    "get",
+    "give",
+    "have",
+    "has",
+    "how",
+    "i",
+    "if",
+    "in",
+    "is",
+    "it",
+    "me",
+    "my",
+    "of",
+    "on",
+    "or",
+    "should",
+    "tell",
+    "that",
+    "the",
+    "this",
+    "to",
+    "was",
+    "what",
+    "when",
+    "where",
+    "which",
+    "who",
+    "why",
+    "will",
+    "would",
+    "you",
+    "your",
+  ]);
 
-          temperature: 0.2,
-        });
+  return String(value || "")
+    .toLowerCase()
+    .replace(
+      /[^a-z0-9\u00C0-\u024F\s]/gi,
+      " "
+    )
+    .split(/\s+/)
+    .filter(
+      (word) =>
+        word &&
+        !stopWords.has(word)
+    );
+};
 
 
-      return title
+/*
+ * Detect titles that are effectively copied from the user's
+ * prompt rather than being a semantic conversation label.
+ */
+
+const isTitleTooCloseToConversation = (
+  title,
+  conversation
+) => {
+  const firstUserMessage =
+    conversation.find(
+      (message) =>
+        message.role ===
+        "user"
+    )?.content || "";
+
+  if (
+    !firstUserMessage ||
+    !title
+  ) {
+    return false;
+  }
+
+  const titleWords =
+    normalizeTitleComparisonWords(
+      title
+    );
+
+  const userWords =
+    normalizeTitleComparisonWords(
+      firstUserMessage
+    );
+
+  if (
+    titleWords.length < 2 ||
+    userWords.length < 2
+  ) {
+    return false;
+  }
+
+  /*
+   * Direct prefix-copy detection.
+   *
+   * Example:
+   * User: "My landlord is refusing..."
+   * Title: "Landlord Refusing"
+   *
+   * This is too close if the meaningful title words
+   * come directly from the prompt opening.
+   */
+
+  const firstMeaningfulUserWords =
+    userWords.slice(0, 7);
+
+  const titleSequence =
+    titleWords.slice(0, 4);
+
+  if (
+    titleSequence.length >= 2
+  ) {
+    let sequentialMatches = 0;
+    let searchStart = 0;
+
+    for (
+      const titleWord of titleSequence
+    ) {
+      let foundIndex = -1;
+
+      for (
+        let index =
+          searchStart;
+        index <
+          firstMeaningfulUserWords.length;
+        index += 1
+      ) {
+        if (
+          firstMeaningfulUserWords[index] ===
+          titleWord
+        ) {
+          foundIndex = index;
+          break;
+        }
+      }
+
+      if (
+        foundIndex === -1
+      ) {
+        break;
+      }
+
+      sequentialMatches += 1;
+      searchStart =
+        foundIndex + 1;
+    }
+
+    if (
+      sequentialMatches >= 3 &&
+      titleWords.length <= 5
+    ) {
+      return true;
+    }
+  }
+
+  /*
+   * Reject titles where most words are simply copied
+   * from the first few meaningful prompt words.
+   */
+
+  const openingSet =
+    new Set(
+      firstMeaningfulUserWords
+    );
+
+  const copiedWordCount =
+    titleWords.filter(
+      (word) =>
+        openingSet.has(word)
+    ).length;
+
+  if (
+    copiedWordCount >= 3 &&
+    copiedWordCount >=
+      Math.ceil(
+        titleWords.length * 0.7
+      )
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+
+/*
+ * Convert a user message into a useful deterministic fallback title.
+ *
+ * This is only used when Sarvam fails or repeatedly echoes the prompt.
+ * The fallback is deliberately a semantic label, never the raw prompt.
+ */
+
+const buildSemanticFallbackTitle = (
+  conversation
+) => {
+  const text =
+    String(
+      conversation.find(
+        (message) =>
+          message.role ===
+          "user"
+      )?.content || ""
+    )
+      .toLowerCase()
+      .trim();
+
+  if (!text) {
+    return "New Legal Conversation";
+  }
+
+  const patterns = [
+    {
+      match:
+        /(security deposit|deposit.*landlord|landlord.*deposit|tenant.*deposit)/,
+      title:
+        "Security Deposit Dispute",
+    },
+    {
+      match:
+        /(legal notice|received.*notice|notice.*received)/,
+      title:
+        "Legal Notice Review",
+    },
+    {
+      match:
+        /(employment contract|job contract|work contract|appointment letter)/,
+      title:
+        "Employment Contract Review",
+    },
+    {
+      match:
+        /(terminated|termination|fired|dismissed|notice period)/,
+      title:
+        "Employment Termination Dispute",
+    },
+    {
+      match:
+        /(refund|replacement|damaged product|consumer complaint|seller.*refund|refund.*seller)/,
+      title:
+        "Consumer Refund Dispute",
+    },
+    {
+      match:
+        /(property transfer|transfer.*property|property.*heir|legal heir|inheritance)/,
+      title:
+        "Property and Inheritance",
+    },
+    {
+      match:
+        /(traffic challan|traffic fine|challan|driving offence)/,
+      title:
+        "Traffic Challan Dispute",
+    },
+    {
+      match:
+        /(tax notice|income tax|gst notice|tax department)/,
+      title:
+        "Tax Notice Review",
+    },
+    {
+      match:
+        /(start.*business|register.*business|business registration|company registration)/,
+      title:
+        "Business Registration",
+    },
+    {
+      match:
+        /(founder agreement|cofounder|co-founder|startup founders)/,
+      title:
+        "Founder Agreement",
+    },
+    {
+      match:
+        /(divorce|maintenance|custody|child custody|matrimonial)/,
+      title:
+        "Family Law Matter",
+    },
+    {
+      match:
+        /(rent agreement|rental agreement|lease agreement|tenancy)/,
+      title:
+        "Rental Agreement Review",
+    },
+  ];
+
+  for (
+    const pattern of patterns
+  ) {
+    if (
+      pattern.match.test(text)
+    ) {
+      return pattern.title;
+    }
+  }
+
+  /*
+   * Generic semantic fallback.
+   *
+   * Pick meaningful words from the opening instead of
+   * simply taking the first six words.
+   */
+
+  const cleanedWords =
+    normalizeTitleComparisonWords(
+      text
+    );
+
+  const fallbackWords =
+    cleanedWords
+      .slice(0, 4);
+
+  if (
+    fallbackWords.length >= 2
+  ) {
+    return fallbackWords
+      .map(
+        (word) =>
+          word.charAt(0)
+            .toUpperCase() +
+          word.slice(1)
+      )
+      .join(" ");
+  }
+
+  return "Legal Question";
+};
+
+
+/**
+ * Generate a short, semantic Lawlite conversation title.
+ *
+ * Preferred input:
+ * [
+ *   { role: "user", content: "..." },
+ *   { role: "assistant", content: "..." },
+ *   ...
+ * ]
+ *
+ * Backwards-compatible input:
+ * "single user message"
+ */
+
+const generateChatTitle = async (
+  conversation
+) => {
+  const titleConversation =
+    prepareConversationForTitle(
+      conversation
+    );
+
+  if (
+    titleConversation.length ===
+    0
+  ) {
+    return "New Legal Conversation";
+  }
+
+  const conversationText =
+    titleConversation
+      .map(
+        (message) =>
+          `${message.role === "user"
+            ? "USER"
+            : "LAWLITE"
+          }: ${message.content}`
+      )
+      .join("\n\n");
+
+  const titleSystemPrompt = `
+You create the title shown in Lawlite's conversation sidebar.
+
+Your job is NOT to shorten, copy, paraphrase, or quote the user's message.
+
+Instead:
+1. Understand the entire conversation.
+2. Identify the underlying CENTRAL LEGAL ISSUE.
+3. Convert that issue into a short semantic label.
+
+A good title sounds like a topic/category in a legal case list.
+
+GOOD:
+Security Deposit Dispute
+Landlord Legal Notice
+Employment Contract Review
+Consumer Refund Dispute
+Property Transfer Issue
+
+BAD:
+My landlord is refusing
+Landlord is refusing to
+I received a legal
+What can I do about
+Please help me understand
+
+TITLE RULES:
+- Return ONLY the title.
+- Maximum 5 words.
+- Prefer 2 to 4 words.
+- Use noun phrases, not sentences.
+- Do NOT begin with "I", "My", "We", "Can", "How", "What", "Why", "Please", "Help", "Tell".
+- Do NOT copy three or more consecutive words from the conversation.
+- Do NOT reuse the opening wording of the user's first sentence.
+- Do NOT simply truncate the user's prompt.
+- Do NOT use the first few words of the prompt as the title.
+- Abstract the issue instead of repeating the wording.
+- Focus on the legal issue, document, right, dispute, transaction, or task.
+- Prefer the most specific issue that is clearly supported by the conversation.
+- If the first user message is vague but the later conversation clarifies it, use the later clarification.
+- Use natural human wording.
+- No quotation marks.
+- No emojis.
+- No hashtags.
+- No period at the end.
+- Do not include names, email addresses, phone numbers, case numbers, account numbers, or other unnecessary private identifiers.
+- Do not invent facts.
+- Do not give advice or a conclusion in the title.
+- Avoid generic titles such as "Legal Question", "Legal Help", "Legal Advice", "New Conversation", and "New Legal Conversation" when a clearer issue can be identified.
+
+IMPORTANT:
+Think about the meaning first, then output the semantic label only.
+
+Return ONLY the final title.
+`.trim();
+
+  const buildTitleRequest = (
+    extraInstruction = ""
+  ) => [
+    {
+      role: "system",
+      content:
+        `${titleSystemPrompt}
+
+${extraInstruction}`.trim(),
+    },
+
+    {
+      role: "user",
+      content: `
+Conversation:
+
+${conversationText}
+
+Remember:
+The title must describe the underlying legal topic, NOT copy the wording of the user's message.
+Return only the title.
+`.trim(),
+    },
+  ];
+
+  try {
+    /*
+     * First attempt.
+     */
+
+    let rawTitle =
+      await callSarvam({
+        messages:
+          buildTitleRequest(),
+
+        maxTokens: 32,
+
+        temperature: 0.45,
+      });
+
+    let title =
+      String(rawTitle || "")
         .replace(
-          /^["']|["']$/g,
+          /^[`"'“”‘’]+|[`"'“”‘’]+$/g,
           ""
         )
         .replace(
-          /\n/g,
+          /^title\s*:\s*/i,
+          ""
+        )
+        .replace(
+          /\n+/g,
+          " "
+        )
+        .replace(
+          /\s+/g,
           " "
         )
         .trim()
-        .slice(0, 80);
-    } catch (error) {
-      console.error(
-        "Sarvam title generation failed:",
-        error
-      );
-
-
-      const fallback =
-        String(
-          firstUserMessage
+        .replace(
+          /[.!?:;,]+$/g,
+          ""
         )
-          .trim()
+        .trim();
+
+    let words =
+      title
+        .split(/\s+/)
+        .filter(Boolean);
+
+    title =
+      words
+        .slice(0, 5)
+        .join(" ")
+        .trim();
+
+    /*
+     * If the first generation copied the user's wording,
+     * give Sarvam one targeted retry rather than accepting it.
+     */
+
+    if (
+      title.length < 2 ||
+      isTitleTooCloseToConversation(
+        title,
+        titleConversation
+      ) ||
+      /^(legal question|legal help|legal advice|new conversation|new legal conversation)$/i.test(
+        title
+      )
+    ) {
+      rawTitle =
+        await callSarvam({
+          messages:
+            buildTitleRequest(
+              `
+Your previous attempt was too close to the user's wording.
+
+Generate a NEW title by abstracting the issue.
+
+Do not use any opening phrase from the user's first message.
+Do not copy wording from the conversation.
+Think in terms such as:
+- dispute type
+- document type
+- legal issue
+- legal right
+- transaction type
+
+Return a completely different semantic label.
+`.trim()
+            ),
+
+          maxTokens: 32,
+
+          temperature: 0.6,
+        });
+
+      title =
+        String(rawTitle || "")
+          .replace(
+            /^[`"'“”‘’]+|[`"'“”‘’]+$/g,
+            ""
+          )
+          .replace(
+            /^title\s*:\s*/i,
+            ""
+          )
+          .replace(
+            /\n+/g,
+            " "
+          )
           .replace(
             /\s+/g,
             " "
-          );
+          )
+          .trim()
+          .replace(
+            /[.!?:;,]+$/g,
+            ""
+          )
+          .trim();
 
+      words =
+        title
+          .split(/\s+/)
+          .filter(Boolean);
 
-      return fallback.length >
-        50
-        ? `${fallback.slice(
-            0,
-            47
-          )}...`
-        : fallback;
+      title =
+        words
+          .slice(0, 5)
+          .join(" ")
+          .trim();
     }
-  };
+
+    /*
+     * Never allow an echoed/truncated prompt to become the final title.
+     */
+
+    if (
+      title.length < 2 ||
+      isTitleTooCloseToConversation(
+        title,
+        titleConversation
+      ) ||
+      /^(legal question|legal help|legal advice|new conversation|new legal conversation)$/i.test(
+        title
+      )
+    ) {
+      return buildSemanticFallbackTitle(
+        titleConversation
+      );
+    }
+
+    return title.slice(
+      0,
+      70
+    );
+  } catch (error) {
+    console.error(
+      "Sarvam title generation failed:",
+      error
+    );
+
+    /*
+     * Title generation must never break the actual conversation.
+     *
+     * IMPORTANT:
+     * Do not fall back to the first six words of the user's
+     * prompt. That creates the exact bad behavior we are fixing.
+     */
+
+    return buildSemanticFallbackTitle(
+      titleConversation
+    );
+  }
+};
 
 
 /*

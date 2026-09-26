@@ -2644,18 +2644,48 @@ router.post(
 
     try {
       const {
+        conversation,
         message,
       } = req.body;
 
+      /*
+       * Prefer the complete conversation.
+       *
+       * Keep `message` as a backwards-compatible
+       * fallback so older frontend code does
+       * not immediately break.
+       */
+
+      let titleInput =
+        conversation;
+
       if (
-        !message ||
-        typeof message !==
+        !Array.isArray(titleInput)
+      ) {
+        if (
+          typeof message ===
           "string"
+        ) {
+          titleInput = [
+            {
+              role: "user",
+              content:
+                message.trim(),
+            },
+          ];
+        } else {
+          titleInput = [];
+        }
+      }
+
+      if (
+        !Array.isArray(titleInput) ||
+        titleInput.length === 0
       ) {
         return res.status(400).json({
           success: false,
           message:
-            "Message is required.",
+            "Conversation is required.",
           requestId,
         });
       }
@@ -2665,7 +2695,7 @@ router.post(
           req.user.uid,
           () =>
             generateChatTitle(
-              message.trim()
+              titleInput
             ),
           {
             requestId,
@@ -2720,7 +2750,6 @@ router.post(
     }
   }
 );
-
 
 /*
 |--------------------------------------------------------------------------

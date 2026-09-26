@@ -1576,32 +1576,46 @@ const formatDriveTree = (
    */
 
   const getSarvamTitle = async (
-    firstMessage
-  ) => {
-    const response = await fetch(
+  conversation
+) => {
+  const idToken =
+    await getFirebaseIdToken();
+
+  const response =
+    await fetch(
       `${API_BASE_URL}/api/chat/title`,
       {
         method: "POST",
+
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type":
+            "application/json",
+
+          Authorization:
+            `Bearer ${idToken}`,
         },
+
         body: JSON.stringify({
-          message: firstMessage,
+          conversation,
         }),
       }
     );
 
-    const data = await response.json();
+  const data =
+    await response.json();
 
-    if (!response.ok || !data.success) {
-      throw new Error(
-        data?.message ||
-          "Unable to generate chat title."
-      );
-    }
+  if (
+    !response.ok ||
+    !data.success
+  ) {
+    throw new Error(
+      data?.message ||
+        "Unable to generate chat title."
+    );
+  }
 
-    return data.title;
-  };
+  return data.title;
+};
 
   /*
    * =========================================
@@ -2069,41 +2083,7 @@ const handleRegenerateResponse = async (
      * first user message.
      */
 
-    if (existingMessages.length === 0) {
-      try {
-        const generatedTitle =
-          await getSarvamTitle(
-            trimmedMessage
-          );
-
-        setHistory((previous) => {
-          const updated = previous.map(
-            (chat) =>
-              String(chat.id) ===
-              String(chatId)
-                ? {
-                    ...chat,
-                    title:
-                      generatedTitle ||
-                      "New conversation",
-                  }
-                : chat
-          );
-
-          localStorage.setItem(
-            HISTORY_STORAGE_KEY,
-            JSON.stringify(updated)
-          );
-
-          return updated;
-        });
-      } catch (error) {
-        console.error(
-          "Chat title generation failed:",
-          error
-        );
-      }
-    }
+    
 
     /*
      * Convert frontend message structure
@@ -2157,6 +2137,69 @@ const handleRegenerateResponse = async (
           "I wasn't able to generate a response right now.",
         assistantMessageId
       );
+      /*
+ * Generate the conversation title only
+ * after Lawlite has produced the response.
+ *
+ * This gives the title generator both:
+ * - the user's question
+ * - Lawlite's response
+ *
+ * Title generation must never break
+ * the actual chat response.
+ */
+
+if (
+  existingMessages.length === 0
+) {
+  try {
+    const titleConversation = [
+      ...conversation,
+      {
+        role: "assistant",
+        content:
+          answer ||
+          "I wasn't able to generate a response right now.",
+      },
+    ];
+
+    const generatedTitle =
+      await getSarvamTitle(
+        titleConversation
+      );
+
+    if (
+      generatedTitle &&
+      generatedTitle.trim()
+    ) {
+      setHistory((previous) => {
+        const updated =
+          previous.map((chat) =>
+            String(chat.id) ===
+            String(chatId)
+              ? {
+                  ...chat,
+                  title:
+                    generatedTitle.trim(),
+                }
+              : chat
+          );
+
+        localStorage.setItem(
+          HISTORY_STORAGE_KEY,
+          JSON.stringify(updated)
+        );
+
+        return updated;
+      });
+    }
+  } catch (error) {
+    console.error(
+      "Chat title generation failed:",
+      error
+    );
+  }
+}
     } catch (error) {
       console.error(
         "Lawlite chat error:",

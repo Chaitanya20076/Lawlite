@@ -16,6 +16,8 @@ import {
   Paperclip,
   Plus,
   RotateCcw,
+  Share2,
+  Archive,
   Scale,
   Search,
   Settings,
@@ -25,6 +27,7 @@ import {
   ThumbsDown,
   Cable,
   ThumbsUp,
+  Trash2,
   Unplug,
   X,
 } from "lucide-react";
@@ -141,10 +144,15 @@ const Chat = () => {
   const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
   const typingIntervalsRef = useRef([]);
+  const chatNoticeTimeoutRef = useRef(null);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [chatMenuOpenId, setChatMenuOpenId] = useState(null);
+  const [deleteChatTarget, setDeleteChatTarget] = useState(null);
+  const [capsuleChatTarget, setCapsuleChatTarget] = useState(null);
+  const [chatActionNotice, setChatActionNotice] = useState("");
   const [connectorsOpen, setConnectorsOpen] = useState(false);
   
 const [connectorNotice, setConnectorNotice] = useState("");
@@ -1249,7 +1257,10 @@ const handleConnectorClick = (connector) => {
         setSearchOpen(false);
         setSettingsOpen(false);
         setConnectorsOpen(false);
-setConnectorNotice("");
+        setChatMenuOpenId(null);
+        setDeleteChatTarget(null);
+        setCapsuleChatTarget(null);
+        setConnectorNotice("");
       }
     };
 
@@ -1277,6 +1288,12 @@ setConnectorNotice("");
       typingIntervalsRef.current.forEach(
         (interval) => clearInterval(interval)
       );
+
+      if (chatNoticeTimeoutRef.current) {
+        window.clearTimeout(
+          chatNoticeTimeoutRef.current
+        );
+      }
     };
   }, []);
 
@@ -1412,6 +1429,598 @@ setConnectorNotice("");
     );
 
     return id;
+  };
+
+
+  /*
+   * =========================================
+   * DELETE CHAT
+   * =========================================
+   */
+
+  const handleDeleteChat = (chatId) => {
+    setHistory((previous) => {
+      const updated =
+        previous.filter(
+          (chat) =>
+            String(chat.id) !==
+            String(chatId)
+        );
+
+      localStorage.setItem(
+        HISTORY_STORAGE_KEY,
+        JSON.stringify(updated)
+      );
+
+      return updated;
+    });
+
+    /*
+     * If the deleted chat is currently open,
+     * clear the active conversation.
+     */
+    if (
+      String(currentChatId) ===
+      String(chatId)
+    ) {
+      typingIntervalsRef.current.forEach(
+        (interval) =>
+          clearInterval(interval)
+      );
+
+      typingIntervalsRef.current = [];
+
+      setMessages([]);
+      setCurrentChatId(null);
+      setMessage("");
+      setIsSending(false);
+
+      localStorage.removeItem(
+        ACTIVE_CHAT_STORAGE_KEY
+      );
+    }
+
+    setChatMenuOpenId(null);
+    setDeleteChatTarget(null);
+
+    if (
+      capsuleChatTarget &&
+      String(capsuleChatTarget.id) ===
+        String(chatId)
+    ) {
+      setCapsuleChatTarget(null);
+    }
+
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 100);
+  };
+
+  /*
+   * =========================================
+   * CHAT SHARING
+   * =========================================
+   */
+
+  const buildChatShareText = (chat) => {
+    const chatMessages = Array.isArray(chat?.messages)
+      ? chat.messages.filter(
+          (item) =>
+            (item?.role === "user" ||
+              item?.role === "assistant") &&
+            typeof item?.text === "string" &&
+            item.text.trim()
+        )
+      : [];
+
+    const lines = [
+      `LAWLITE — ${chat?.title || "Legal conversation"}`,
+      "",
+      `Date: ${chat?.date || "Today"}`,
+      "",
+    ];
+
+    chatMessages.forEach((item) => {
+      const speaker =
+        item.role === "user"
+          ? "You"
+          : "Lawlite";
+
+      lines.push(`${speaker}:`);
+      lines.push(item.text.trim());
+      lines.push("");
+    });
+
+    lines.push("Shared from Lawlite.");
+
+    return lines.join("\n");
+  };
+
+  const copyTextToClipboard = async (text) => {
+    if (
+      navigator.clipboard &&
+      typeof navigator.clipboard.writeText === "function"
+    ) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+
+    const temporaryTextArea =
+      document.createElement("textarea");
+
+    temporaryTextArea.value = text;
+    temporaryTextArea.setAttribute(
+      "readonly",
+      ""
+    );
+    temporaryTextArea.style.position = "fixed";
+    temporaryTextArea.style.opacity = "0";
+    temporaryTextArea.style.pointerEvents = "none";
+
+    document.body.appendChild(temporaryTextArea);
+    temporaryTextArea.select();
+
+    let copied = false;
+
+    try {
+      copied = Boolean(
+        document.execCommand("copy")
+      );
+    } catch {
+      copied = false;
+    }
+
+    document.body.removeChild(temporaryTextArea);
+
+    return copied;
+  };
+
+  const showChatActionNotice = (notice) => {
+    setChatActionNotice(notice);
+
+    if (chatNoticeTimeoutRef.current) {
+      window.clearTimeout(
+        chatNoticeTimeoutRef.current
+      );
+    }
+
+    chatNoticeTimeoutRef.current =
+      window.setTimeout(() => {
+        setChatActionNotice("");
+        chatNoticeTimeoutRef.current = null;
+      }, 2600);
+  };
+
+  const handleShareChat = async (chat) => {
+    setChatMenuOpenId(null);
+
+    if (!chat) {
+      return;
+    }
+
+    const chatMessages = Array.isArray(chat.messages)
+      ? chat.messages.filter(
+          (item) =>
+            (item?.role === "user" ||
+              item?.role === "assistant") &&
+            typeof item?.text === "string" &&
+            item.text.trim()
+        )
+      : [];
+
+    if (!chatMessages.length) {
+      showChatActionNotice(
+        "There is nothing to share in this conversation yet."
+      );
+      return;
+    }
+
+    const shareText =
+      buildChatShareText(chat);
+
+    if (
+      navigator.share &&
+      typeof navigator.share === "function"
+    ) {
+      try {
+        await navigator.share({
+          title:
+            chat.title ||
+            "Lawlite conversation",
+          text: shareText,
+        });
+
+        showChatActionNotice(
+          "Conversation shared successfully."
+        );
+        return;
+      } catch (error) {
+        if (error?.name === "AbortError") {
+          return;
+        }
+      }
+    }
+
+    try {
+      const copied =
+        await copyTextToClipboard(
+          shareText
+        );
+
+      if (copied) {
+        showChatActionNotice(
+          "Conversation copied. You can paste it anywhere to share."
+        );
+      } else {
+        showChatActionNotice(
+          "Could not copy the conversation. Please try again."
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Share chat error:",
+        error
+      );
+      showChatActionNotice(
+        "Could not share this conversation right now."
+      );
+    }
+  };
+
+  /*
+   * =========================================
+   * CHAT CAPSULE
+   * =========================================
+   *
+   * A capsule is a compact, portable snapshot
+   * of a conversation. It is built locally from
+   * the saved chat history, so it does not create
+   * another AI request.
+   */
+
+  const buildChatCapsule = (chat) => {
+    const chatMessages = Array.isArray(chat?.messages)
+      ? chat.messages.filter(
+          (item) =>
+            (item?.role === "user" ||
+              item?.role === "assistant") &&
+            typeof item?.text === "string" &&
+            item.text.trim()
+        )
+      : [];
+
+    const userQuestions =
+      chatMessages
+        .filter((item) => item.role === "user")
+        .map((item) => item.text.trim())
+        .filter(Boolean);
+
+    const assistantMessages =
+      chatMessages
+        .filter((item) => item.role === "assistant")
+        .map((item) => item.text.trim())
+        .filter(Boolean);
+
+    const coreIssue =
+      userQuestions[0] ||
+      "No user question recorded.";
+
+    const latestGuidance =
+      assistantMessages[assistantMessages.length - 1] ||
+      "No Lawlite response recorded yet.";
+
+    return {
+      title:
+        chat?.title ||
+        "Lawlite Legal Conversation",
+      date: chat?.date || "Today",
+      messageCount: chatMessages.length,
+      coreIssue,
+      questions: userQuestions
+        .slice(1, 4)
+        .map((question) =>
+          question.length > 260
+            ? `${question.slice(0, 257)}...`
+            : question
+        ),
+      latestGuidance,
+    };
+  };
+
+  const getCapsuleText = (capsule) => {
+    const lines = [
+      "LAWLITE — CHAT CAPSULE",
+      "",
+      `Title: ${capsule.title}`,
+      `Date: ${capsule.date}`,
+      `Messages: ${capsule.messageCount}`,
+      "",
+      "CORE ISSUE",
+      capsule.coreIssue,
+      "",
+    ];
+
+    if (capsule.questions.length) {
+      lines.push("OTHER QUESTIONS");
+
+      capsule.questions.forEach(
+        (question, index) => {
+          lines.push(
+            `${index + 1}. ${question}`
+          );
+        }
+      );
+
+      lines.push("");
+    }
+
+    lines.push("LATEST LAWLITE GUIDANCE");
+    lines.push(capsule.latestGuidance);
+    lines.push("");
+    lines.push(
+      "This capsule is a compact record of the conversation and is not a substitute for professional legal advice."
+    );
+
+    return lines.join("\n");
+  };
+
+  const handleCreateCapsule = (chat) => {
+    setChatMenuOpenId(null);
+
+    if (!chat) {
+      return;
+    }
+
+    const chatMessages = Array.isArray(chat.messages)
+      ? chat.messages.filter(
+          (item) =>
+            (item?.role === "user" ||
+              item?.role === "assistant") &&
+            typeof item?.text === "string" &&
+            item.text.trim()
+        )
+      : [];
+
+    if (!chatMessages.length) {
+      showChatActionNotice(
+        "There is nothing to capsule in this conversation yet."
+      );
+      return;
+    }
+
+    setCapsuleChatTarget(chat);
+  };
+
+  const handleCopyCapsule = async () => {
+    if (!capsuleChatTarget) {
+      return;
+    }
+
+    try {
+      const capsule =
+        buildChatCapsule(
+          capsuleChatTarget
+        );
+
+      const copied =
+        await copyTextToClipboard(
+          getCapsuleText(capsule)
+        );
+
+      if (copied) {
+        showChatActionNotice(
+          "Chat capsule copied to your clipboard."
+        );
+      } else {
+        showChatActionNotice(
+          "Could not copy the chat capsule."
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Copy capsule error:",
+        error
+      );
+    }
+  };
+
+  const handleDownloadCapsule = () => {
+    if (!capsuleChatTarget) {
+      return;
+    }
+
+    const capsule =
+      buildChatCapsule(
+        capsuleChatTarget
+      );
+
+    const pdf = new jsPDF({
+      unit: "mm",
+      format: "a4",
+    });
+
+    const pageWidth =
+      pdf.internal.pageSize.getWidth();
+    const pageHeight =
+      pdf.internal.pageSize.getHeight();
+    const margin = 18;
+    const usableWidth =
+      pageWidth - margin * 2;
+    let y = 20;
+
+    const addWrappedText = (
+      text,
+      fontSize = 10,
+      lineHeight = 5.5
+    ) => {
+      pdf.setFontSize(fontSize);
+
+      const lines = pdf.splitTextToSize(
+        String(text || ""),
+        usableWidth
+      );
+
+      lines.forEach((line) => {
+        if (y > pageHeight - 20) {
+          pdf.addPage();
+          y = 20;
+        }
+
+        pdf.text(
+          line,
+          margin,
+          y
+        );
+
+        y += lineHeight;
+      });
+    };
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(18);
+    pdf.text("LAWLITE", margin, y);
+    y += 8;
+
+    pdf.setFontSize(13);
+    pdf.text(
+      "Chat Capsule",
+      margin,
+      y
+    );
+    y += 7;
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setTextColor(110, 110, 110);
+    pdf.setFontSize(9);
+    pdf.text(
+      `${capsule.date} • ${capsule.messageCount} messages`,
+      margin,
+      y
+    );
+    y += 8;
+
+    pdf.setTextColor(30, 30, 30);
+    pdf.setDrawColor(220, 220, 220);
+    pdf.line(
+      margin,
+      y,
+      pageWidth - margin,
+      y
+    );
+    y += 9;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(11);
+    pdf.text("TITLE", margin, y);
+    y += 6;
+
+    pdf.setFont("helvetica", "normal");
+    addWrappedText(
+      capsule.title,
+      10,
+      5.5
+    );
+    y += 3;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(11);
+    pdf.text("CORE ISSUE", margin, y);
+    y += 6;
+
+    pdf.setFont("helvetica", "normal");
+    addWrappedText(
+      capsule.coreIssue,
+      10,
+      5.5
+    );
+    y += 3;
+
+    if (capsule.questions.length) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(11);
+      pdf.text(
+        "OTHER QUESTIONS",
+        margin,
+        y
+      );
+      y += 6;
+
+      pdf.setFont("helvetica", "normal");
+
+      capsule.questions.forEach(
+        (question, index) => {
+          addWrappedText(
+            `${index + 1}. ${question}`,
+            10,
+            5.5
+          );
+          y += 1;
+        }
+      );
+
+      y += 3;
+    }
+
+    if (y > pageHeight - 70) {
+      pdf.addPage();
+      y = 20;
+    }
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(11);
+    pdf.text(
+      "LATEST LAWLITE GUIDANCE",
+      margin,
+      y
+    );
+    y += 6;
+
+    pdf.setFont("helvetica", "normal");
+    addWrappedText(
+      capsule.latestGuidance,
+      10,
+      5.5
+    );
+
+    pdf.setTextColor(130, 130, 130);
+    pdf.setFontSize(7.5);
+
+    const footerText =
+      "Lawlite Chat Capsule • For reference only • Not a substitute for professional legal advice";
+
+    const totalPages =
+      pdf.internal.getNumberOfPages();
+
+    for (let page = 1; page <= totalPages; page += 1) {
+      pdf.setPage(page);
+      pdf.text(
+        footerText,
+        margin,
+        pageHeight - 10
+      );
+      pdf.text(
+        `Page ${page} of ${totalPages}`,
+        pageWidth - margin,
+        pageHeight - 10,
+        { align: "right" }
+      );
+    }
+
+    const safeFileName =
+      capsule.title
+        .slice(0, 60)
+        .replace(/[^a-z0-9]+/gi, "-")
+        .replace(/^-|-$/g, "")
+        .toLowerCase() ||
+      "chat-capsule";
+
+    pdf.save(
+      `lawlite-${safeFileName}-capsule.pdf`
+    );
+
+    showChatActionNotice(
+      "Chat capsule downloaded as PDF."
+    );
   };
 
   /*
@@ -2468,40 +3077,120 @@ if (
             </div>
           ) : (
             history.map((item) => (
-              <button
-                type="button"
-                className={`chat-history-item ${
-                  String(item.id) ===
-                  String(currentChatId)
-                    ? "active"
-                    : ""
-                }`}
+              <div
+                className="chat-history-item-wrapper"
                 key={item.id}
-                onClick={() =>
-                  handleSelectHistory(
-                    item
-                  )
-                }
               >
-                <FileText size={15} />
+                <button
+                  type="button"
+                  className={`chat-history-item ${
+                    String(item.id) ===
+                    String(currentChatId)
+                      ? "active"
+                      : ""
+                  }`}
+                  onClick={() => {
+                    setChatMenuOpenId(null);
 
-                <div className="chat-history-text">
-                  <span>
-                    {item.title ||
-                      "New conversation"}
-                  </span>
+                    handleSelectHistory(
+                      item
+                    );
+                  }}
+                >
+                  <FileText size={15} />
 
-                  <small>
-                    {item.date ||
-                      "Today"}
-                  </small>
-                </div>
+                  <div className="chat-history-text">
+                    <span>
+                      {item.title ||
+                        "New conversation"}
+                    </span>
 
-                <MoreHorizontal
-                  size={15}
-                  className="chat-history-more"
-                />
-              </button>
+                    <small>
+                      {item.date ||
+                        "Today"}
+                    </small>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="chat-history-more-button"
+                  aria-label={`Options for ${
+                    item.title ||
+                    "New conversation"
+                  }`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+
+                    setChatMenuOpenId(
+                      (current) =>
+                        String(current) ===
+                        String(item.id)
+                          ? null
+                          : item.id
+                    );
+                  }}
+                >
+                  <MoreHorizontal
+                    size={15}
+                  />
+                </button>
+
+                {String(chatMenuOpenId) ===
+                  String(item.id) && (
+                  <div
+                    className="chat-history-menu"
+                    onClick={(event) =>
+                      event.stopPropagation()
+                    }
+                  >
+                    <button
+                      type="button"
+                      className="chat-history-menu-item"
+                      onClick={() =>
+                        handleShareChat(item)
+                      }
+                    >
+                      <Share2 size={14} />
+
+                      <span>
+                        Share chat
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="chat-history-menu-item"
+                      onClick={() =>
+                        handleCreateCapsule(item)
+                      }
+                    >
+                      <Archive size={14} />
+
+                      <span>
+                        Capsule chat
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="chat-history-menu-item delete"
+                      onClick={() => {
+                        setChatMenuOpenId(null);
+                        setDeleteChatTarget(
+                          item
+                        );
+                      }}
+                    >
+                      <Trash2 size={14} />
+
+                      <span>
+                        Delete chat
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
             ))
           )}
 
@@ -3377,6 +4066,321 @@ if (
         </div>
       )}
       {/* =========================================
+          DELETE CHAT CONFIRMATION
+      ========================================= */}
+
+      {deleteChatTarget && (
+        <div
+          className="chat-modal-backdrop"
+          onClick={() =>
+            setDeleteChatTarget(null)
+          }
+        >
+          <div
+            className="chat-delete-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="chat-delete-icon">
+              <Trash2 size={18} />
+            </div>
+
+            <h3>
+              Delete this conversation?
+            </h3>
+
+            <p>
+              This conversation will be
+              permanently removed from your
+              chat history.
+            </p>
+
+            <div className="chat-delete-actions">
+              <button
+                type="button"
+                className="chat-delete-cancel"
+                onClick={() =>
+                  setDeleteChatTarget(null)
+                }
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="chat-delete-confirm"
+                onClick={() =>
+                  handleDeleteChat(
+                    deleteChatTarget.id
+                  )
+                }
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================
+          CHAT CAPSULE MODAL
+      ========================================= */}
+
+      {capsuleChatTarget && (() => {
+        const capsule =
+          buildChatCapsule(
+            capsuleChatTarget
+          );
+
+        return (
+          <div
+            className="chat-modal-backdrop"
+            onClick={() =>
+              setCapsuleChatTarget(null)
+            }
+          >
+            <div
+              className="chat-delete-modal chat-capsule-modal"
+              style={{
+                width: "min(720px, 92vw)",
+                maxWidth: "720px",
+                maxHeight: "82vh",
+                overflowY: "auto",
+              }}
+              onClick={(event) =>
+                event.stopPropagation()
+              }
+            >
+              <div
+                className="chat-modal-heading"
+                style={{
+                  marginBottom: "18px",
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      width: "34px",
+                      height: "34px",
+                      borderRadius: "10px",
+                      display: "grid",
+                      placeItems: "center",
+                      border: "1px solid rgba(184, 134, 11, 0.25)",
+                      background:
+                        "rgba(184, 134, 11, 0.08)",
+                      marginRight: "10px",
+                    }}
+                  >
+                    <Archive size={17} />
+                  </div>
+
+                  <strong>
+                    Chat Capsule
+                  </strong>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCapsuleChatTarget(null)
+                  }
+                  aria-label="Close chat capsule"
+                >
+                  <X size={17} />
+                </button>
+              </div>
+
+              <div
+                style={{
+                  marginBottom: "18px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    opacity: 0.58,
+                    marginBottom: "7px",
+                  }}
+                >
+                  {capsule.date} • {capsule.messageCount} messages
+                </div>
+
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: "22px",
+                    lineHeight: 1.25,
+                  }}
+                >
+                  {capsule.title}
+                </h3>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gap: "14px",
+                }}
+              >
+                <section
+                  style={{
+                    padding: "15px",
+                    borderRadius: "14px",
+                    border: "1px solid rgba(127, 127, 127, 0.18)",
+                    background:
+                      "rgba(127, 127, 127, 0.045)",
+                  }}
+                >
+                  <strong
+                    style={{
+                      display: "block",
+                      fontSize: "12px",
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      marginBottom: "7px",
+                      opacity: 0.62,
+                    }}
+                  >
+                    Core issue
+                  </strong>
+
+                  <p
+                    style={{
+                      margin: 0,
+                      lineHeight: 1.65,
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {capsule.coreIssue}
+                  </p>
+                </section>
+
+                {capsule.questions.length > 0 && (
+                  <section
+                    style={{
+                      padding: "15px",
+                      borderRadius: "14px",
+                      border: "1px solid rgba(127, 127, 127, 0.18)",
+                      background:
+                        "rgba(127, 127, 127, 0.045)",
+                    }}
+                  >
+                    <strong
+                      style={{
+                        display: "block",
+                        fontSize: "12px",
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        marginBottom: "9px",
+                        opacity: 0.62,
+                      }}
+                    >
+                      Other questions
+                    </strong>
+
+                    <ol
+                      style={{
+                        margin: 0,
+                        paddingLeft: "20px",
+                      }}
+                    >
+                      {capsule.questions.map(
+                        (question, index) => (
+                          <li
+                            key={`${capsule.title}-${index}`}
+                            style={{
+                              marginBottom: "8px",
+                              lineHeight: 1.55,
+                            }}
+                          >
+                            {question}
+                          </li>
+                        )
+                      )}
+                    </ol>
+                  </section>
+                )}
+
+                <section
+                  style={{
+                    padding: "15px",
+                    borderRadius: "14px",
+                    border: "1px solid rgba(184, 134, 11, 0.22)",
+                    background:
+                      "rgba(184, 134, 11, 0.055)",
+                  }}
+                >
+                  <strong
+                    style={{
+                      display: "block",
+                      fontSize: "12px",
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      marginBottom: "7px",
+                    }}
+                  >
+                    Latest Lawlite guidance
+                  </strong>
+
+                  <div
+                    style={{
+                      lineHeight: 1.7,
+                      whiteSpace: "pre-wrap",
+                      maxHeight: "280px",
+                      overflowY: "auto",
+                      paddingRight: "4px",
+                    }}
+                  >
+                    {capsule.latestGuidance}
+                  </div>
+                </section>
+              </div>
+
+              <p
+                style={{
+                  margin: "16px 0 0",
+                  fontSize: "12px",
+                  lineHeight: 1.55,
+                  opacity: 0.58,
+                }}
+              >
+                This capsule is a compact record of the conversation. It does not replace professional legal advice.
+              </p>
+
+              <div
+                className="chat-delete-actions"
+                style={{
+                  marginTop: "20px",
+                }}
+              >
+                <button
+                  type="button"
+                  className="chat-delete-cancel"
+                  onClick={handleCopyCapsule}
+                >
+                  <Clipboard size={15} />
+                  Copy capsule
+                </button>
+
+                <button
+                  type="button"
+                  className="chat-delete-confirm"
+                  onClick={handleDownloadCapsule}
+                >
+                  <Download size={15} />
+                  Download PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* =========================================
     CONNECTORS MODAL
 ========================================= */}
 
@@ -3549,6 +4553,41 @@ if (
     </div>
   </div>
 )}
+
+      {chatActionNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "fixed",
+            left: "50%",
+            bottom: "24px",
+            transform: "translateX(-50%)",
+            zIndex: 5000,
+            maxWidth: "min(92vw, 520px)",
+            padding: "11px 15px",
+            borderRadius: "12px",
+            border: "1px solid rgba(184, 134, 11, 0.24)",
+            background:
+              theme === "dark"
+                ? "rgba(24, 20, 14, 0.96)"
+                : "rgba(255, 252, 244, 0.98)",
+            color:
+              theme === "dark"
+                ? "#f7efe1"
+                : "#3b2b12",
+            boxShadow:
+              "0 12px 32px rgba(0, 0, 0, 0.16)",
+            fontSize: "13px",
+            fontWeight: 600,
+            lineHeight: 1.4,
+            textAlign: "center",
+            backdropFilter: "blur(12px)",
+          }}
+        >
+          {chatActionNotice}
+        </div>
+      )}
 
     </main>
   );

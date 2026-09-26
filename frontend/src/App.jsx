@@ -26,6 +26,7 @@ import Signup from "./pages/Signup/Signup";
 import Onboarding from "./pages/Onboarding/Onboarding";
 import Loading from "./pages/Loading/Loading";
 import Chat from "./pages/Chat/Chat";
+import Partners from "./pages/Partners/Partners";
 
 import { auth } from "./config/firebase";
 
@@ -132,6 +133,7 @@ const ProtectedRoute = ({
     return <AuthLoading />;
   }
 
+
   if (!user) {
     return (
       <Navigate
@@ -140,6 +142,7 @@ const ProtectedRoute = ({
       />
     );
   }
+
 
   return children;
 };
@@ -167,6 +170,7 @@ const LoginRoute = ({
   user,
   loading,
 }) => {
+
   const googleLoginCheck =
     sessionStorage.getItem(
       GOOGLE_LOGIN_CHECK_KEY
@@ -181,8 +185,8 @@ const LoginRoute = ({
   /*
    * IMPORTANT:
    *
-   * Do not redirect to Chat while Google authentication is still being
-   * checked.
+   * Do not redirect to Chat while Google authentication is
+   * still being checked.
    */
 
   if (
@@ -220,6 +224,7 @@ const SignupRoute = ({
   user,
   loading,
 }) => {
+
   if (loading) {
     return <AuthLoading />;
   }
@@ -246,6 +251,7 @@ const SignupRoute = ({
 */
 
 const App = () => {
+
   const location =
     useLocation();
 
@@ -269,6 +275,7 @@ const App = () => {
   */
 
   useEffect(() => {
+
     const unsubscribe =
       onAuthStateChanged(
         auth,
@@ -310,6 +317,9 @@ const App = () => {
   |--------------------------------------------------------------------------
   | FULL SCREEN APP PAGES
   |--------------------------------------------------------------------------
+  |
+  | These pages don't display the normal Navbar/Footer.
+  |
   */
 
   const isAppPage =
@@ -323,13 +333,16 @@ const App = () => {
 
   return (
     <>
+
       {!isAppPage && (
         <Navbar />
       )}
 
 
       <main>
+
         <Routes>
+
 
           {/* =====================================================
               PUBLIC PAGES
@@ -363,6 +376,18 @@ const App = () => {
             path="/contact"
             element={
               <Contact />
+            }
+          />
+
+
+          {/* =====================================================
+              PARTNERS
+          ===================================================== */}
+
+          <Route
+            path="/partners"
+            element={
+              <Partners />
             }
           />
 
@@ -463,12 +488,14 @@ const App = () => {
           />
 
         </Routes>
+
       </main>
 
 
       {!isAppPage && (
         <Footer />
       )}
+
     </>
   );
 };

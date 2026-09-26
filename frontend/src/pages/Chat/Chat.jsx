@@ -6,7 +6,6 @@ import {
   ArrowUp,
   Check,
   ChevronDown,
-  Cloud,
   Clipboard,
   Download,
   FileText,
@@ -29,14 +28,15 @@ import {
   Unplug,
   X,
 } from "lucide-react";
+
 import {
   SiDropbox,
   SiGithub,
   SiGmail,
-  SiGooglecalendar,
   SiGoogledrive,
   SiNotion,
 } from "react-icons/si";
+
 import { jsPDF } from "jspdf";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "../../config/firebase";
@@ -100,12 +100,6 @@ const connectorGroups = [
         icon: SiDropbox,
       },
       {
-        id: "onedrive",
-        name: "OneDrive",
-        description: "Access Microsoft files",
-        icon: Cloud,
-      },
-      {
         id: "notion",
         name: "Notion",
         description: "Connect pages and databases",
@@ -122,24 +116,6 @@ const connectorGroups = [
         name: "Gmail",
         description: "Find emails and attachments",
         icon: SiGmail,
-      },
-      {
-  id: "slack",
-  name: "Slack",
-  description: "Search permitted workspace content",
-  icon: Cable,
-},
-    ],
-  },
-
-  {
-    title: "Productivity",
-    items: [
-      {
-        id: "google-calendar",
-        name: "Google Calendar",
-        description: "Access events and deadlines",
-        icon: SiGooglecalendar,
       },
     ],
   },

@@ -32,6 +32,7 @@ const {
 const {
   getRelevantGmailContext,
 } = require("../services/gmailService");
+
 const {
   getRelevantGitHubContext,
 } = require("../services/githubService");
@@ -39,6 +40,20 @@ const {
 const {
   requireAuth,
 } = require("../middleware/authMiddleware");
+
+const {
+  requestContextMiddleware,
+} = require("../middleware/requestContextMiddleware");
+
+const {
+  chatRateLimiter,
+  titleRateLimiter,
+} = require("../middleware/rateLimitMiddleware");
+
+const {
+  runWithAiSlot,
+} = require("../services/aiConcurrencyService");
+
 const {
   classifyLawliteQuery,
   getLawliteRefusalMessage,
@@ -556,6 +571,7 @@ const shouldSearchGmail =
     );
   };
 
+
 /*
 |--------------------------------------------------------------------------
 | GITHUB HELPERS
@@ -640,6 +656,8 @@ const shouldSearchGitHub =
         text.includes(trigger)
     );
   };
+
+
 /*
 |--------------------------------------------------------------------------
 | DROPBOX HELPERS
@@ -1086,8 +1104,23 @@ ${text.slice(
 router.post(
   "/",
   requireAuth,
+  requestContextMiddleware,
+  chatRateLimiter,
   async (req, res) => {
-    try {
+  const requestId =
+    req.requestId || "unknown";
+
+  const uid =
+    req.user?.uid || "unknown";
+
+  try {
+
+      console.log(
+        `💬 Lawlite chat request | ` +
+        `requestId=${requestId} | ` +
+        `uid=${uid}`
+      );
+
       const {
         conversation = [],
       } = req.body;
@@ -1178,7 +1211,9 @@ router.post(
 
       const userMessage =
         latestUserMessage.content;
-      /*
+
+
+/*
 |--------------------------------------------------------------------------
 | LAWLITE DOMAIN GUARD
 |--------------------------------------------------------------------------
@@ -1195,90 +1230,90 @@ router.post(
 |
 */
 
-const lawliteClassification =
-  classifyLawliteQuery(
-    userMessage
-  );
+      const lawliteClassification =
+        classifyLawliteQuery(
+          userMessage
+        );
 
-console.log(
-  "🧠 Lawlite query classification:",
-  {
-    domain:
-      lawliteClassification.domain,
+      console.log(
+        "🧠 Lawlite query classification:",
+        {
+          domain:
+            lawliteClassification.domain,
 
-    confidence:
-      lawliteClassification.confidence,
+          confidence:
+            lawliteClassification.confidence,
 
-    connectors:
-      lawliteClassification.connectors,
-  }
-);
+          connectors:
+            lawliteClassification.connectors,
+        }
+      );
 
+      if (
+        !lawliteClassification.allowed
+      ) {
+        console.log(
+          "🛑 Lawlite refused off-topic request:",
+          userMessage
+        );
 
-if (
-  !lawliteClassification.allowed
-) {
-  console.log(
-    "🛑 Lawlite refused off-topic request:",
-    userMessage
-  );
+        return res.json({
+          success: true,
 
-  return res.json({
-    success: true,
+          message:
+            getLawliteRefusalMessage(),
 
-    message:
-      getLawliteRefusalMessage(),
+          lawliteRefused:
+            true,
 
-    lawliteRefused:
-      true,
+          lawliteDomain:
+            lawliteClassification.domain,
 
-    lawliteDomain:
-      lawliteClassification.domain,
+          lawliteConfidence:
+            lawliteClassification.confidence,
 
-    lawliteConfidence:
-      lawliteClassification.confidence,
+          webSearchUsed:
+            false,
 
-    webSearchUsed:
-      false,
+          driveSearchUsed:
+            false,
 
-    driveSearchUsed:
-      false,
+          driveSources: [],
 
-    driveSources: [],
+          dropboxSearchUsed:
+            false,
 
-    dropboxSearchUsed:
-      false,
+          dropboxSources: [],
 
-    dropboxSources: [],
+          notionSearchUsed:
+            false,
 
-    notionSearchUsed:
-      false,
+          notionSources: [],
 
-    notionSources: [],
+          gmailSearchUsed:
+            false,
 
-    gmailSearchUsed:
-      false,
+          gmailSources: [],
 
-    gmailSources: [],
+          githubSearchUsed:
+            false,
 
-    githubSearchUsed:
-      false,
+          githubSources: [],
 
-    githubSources: [],
+          driveBrowseUsed:
+            false,
 
-    driveBrowseUsed:
-      false,
+          driveFolderUsed:
+            false,
 
-    driveFolderUsed:
-      false,
+          dropboxBrowseUsed:
+            false,
 
-    dropboxBrowseUsed:
-      false,
+          dropboxFolderUsed:
+            false,
+        });
+      }
 
-    dropboxFolderUsed:
-      false,
-  });
-}
 
       /*
       |--------------------------------------------------------------------------
@@ -1287,10 +1322,10 @@ if (
       */
 
       let driveConnector = null;
-let dropboxConnector = null;
-let notionConnector = null;
-let gmailConnector = null;
-let githubConnector = null;
+      let dropboxConnector = null;
+      let notionConnector = null;
+      let gmailConnector = null;
+      let githubConnector = null;
 
       try {
         driveConnector =
@@ -1339,17 +1374,18 @@ let githubConnector = null;
           error
         );
       }
+
       try {
-  githubConnector =
-    await getGitHubConnector(
-      req.user?.uid
-    );
-} catch (error) {
-  console.error(
-    "GitHub connector lookup error:",
-    error
-  );
-}
+        githubConnector =
+          await getGitHubConnector(
+            req.user?.uid
+          );
+      } catch (error) {
+        console.error(
+          "GitHub connector lookup error:",
+          error
+        );
+      }
 
 
       /*
@@ -2224,91 +2260,94 @@ Snippet: ${result.snippet || ""}`
         }
       }
 
+
 /*
 |--------------------------------------------------------------------------
 | GITHUB SEARCH
 |--------------------------------------------------------------------------
 */
 
-const needsGitHubSearch =
-  shouldSearchGitHub(
-    userMessage
-  );
+      const needsGitHubSearch =
+        shouldSearchGitHub(
+          userMessage
+        );
 
-let githubContext = null;
-let githubSources = [];
-
-if (
-  needsGitHubSearch
-) {
-  console.log(
-    "🐙 Lawlite GitHub search:",
-    userMessage
-  );
-
-  if (
-    githubConnector
-  ) {
-    try {
-      const githubResult =
-        await getRelevantGitHubContext({
-          accessToken:
-            githubConnector.accessToken,
-
-          query:
-            userMessage,
-
-          maxRepositories:
-            5,
-
-          maxFiles:
-            8,
-
-          maxCharsPerFile:
-            12000,
-        });
-
-      githubContext =
-        githubResult?.context ||
-        null;
-
-      githubSources =
-        githubResult?.sources ||
-        [];
-
-      console.log(
-        `🐙 GitHub sources found: ${githubSources.length}`
-      );
+      let githubContext = null;
+      let githubSources = [];
 
       if (
-        githubSources.length >
-        0
+        needsGitHubSearch
       ) {
         console.log(
-          "📂 GitHub sources:",
-          githubSources.map(
-            (source) =>
-              source.name ||
-              source.path ||
-              source.repository
-          )
+          "🐙 Lawlite GitHub search:",
+          userMessage
         );
-      }
-    } catch (error) {
-      console.error(
-        "GitHub context error:",
-        error
-      );
 
-      githubContext = null;
-      githubSources = [];
-    }
-  } else {
-    console.log(
-      "🐙 GitHub is not connected."
-    );
-  }
-}
+        if (
+          githubConnector
+        ) {
+          try {
+            const githubResult =
+              await getRelevantGitHubContext({
+                accessToken:
+                  githubConnector.accessToken,
+
+                query:
+                  userMessage,
+
+                maxRepositories:
+                  5,
+
+                maxFiles:
+                  8,
+
+                maxCharsPerFile:
+                  12000,
+              });
+
+            githubContext =
+              githubResult?.context ||
+              null;
+
+            githubSources =
+              githubResult?.sources ||
+              [];
+
+            console.log(
+              `🐙 GitHub sources found: ${githubSources.length}`
+            );
+
+            if (
+              githubSources.length >
+              0
+            ) {
+              console.log(
+                "📂 GitHub sources:",
+                githubSources.map(
+                  (source) =>
+                    source.name ||
+                    source.path ||
+                    source.repository
+                )
+              );
+            }
+          } catch (error) {
+            console.error(
+              "GitHub context error:",
+              error
+            );
+
+            githubContext = null;
+            githubSources = [];
+          }
+        } else {
+          console.log(
+            "🐙 GitHub is not connected."
+          );
+        }
+      }
+
+
       /*
       |--------------------------------------------------------------------------
       | COMBINE PRIVATE CONTEXT
@@ -2332,9 +2371,10 @@ if (
           gmailContext
             ? `GMAIL CONTEXT\n${gmailContext}`
             : null,
-                githubContext
-      ? `GITHUB CONTEXT\n${githubContext}`
-      : null,
+
+          githubContext
+            ? `GITHUB CONTEXT\n${githubContext}`
+            : null,
         ]
           .filter(Boolean)
           .join(
@@ -2349,31 +2389,23 @@ if (
       */
 
       const answer =
-        await generateChatResponse({
-          conversation:
-            cleanConversation,
+        await runWithAiSlot(
+          uid,
+          () =>
+            generateChatResponse({
+              conversation:
+                cleanConversation,
 
-          webResults:
-            webContext,
+              webResults:
+                webContext,
 
-          /*
-          |--------------------------------------------------------------------------
-          | IMPORTANT
-          |--------------------------------------------------------------------------
-          |
-          | Sarvam already accepts this field as the private
-          | document/context channel.
-          |
-          | Gmail is now included inside it alongside:
-          | Google Drive
-          | Dropbox
-          | Notion
-          |
-          */
-
-          driveContext:
-            combinedPrivateDocumentContext,
-        });
+              driveContext:
+                combinedPrivateDocumentContext,
+            }),
+          {
+            requestId,
+          }
+        );
 
 
       /*
@@ -2387,6 +2419,8 @@ if (
 
         message:
           answer,
+
+        requestId,
 
         webSearchUsed:
           needsWebSearch,
@@ -2503,35 +2537,37 @@ if (
                 [],
             })
           ),
-          githubSearchUsed:
-  needsGitHubSearch &&
-  githubSources.length > 0,
 
-githubSources:
-  githubSources.map(
-    (source) => ({
-      id:
-        source.id ||
-        null,
+        githubSearchUsed:
+          needsGitHubSearch &&
+          githubSources.length >
+            0,
 
-      name:
-        source.name ||
-        null,
+        githubSources:
+          githubSources.map(
+            (source) => ({
+              id:
+                source.id ||
+                null,
 
-      path:
-        source.path ||
-        null,
+              name:
+                source.name ||
+                null,
 
-      repository:
-        source.repository ||
-        null,
+              path:
+                source.path ||
+                null,
 
-      url:
-        source.url ||
-        source.html_url ||
-        null,
-    })
-  ),
+              repository:
+                source.repository ||
+                null,
+
+              url:
+                source.url ||
+                source.html_url ||
+                null,
+            })
+          ),
 
         driveBrowseUsed:
           false,
@@ -2550,21 +2586,44 @@ githubSources:
         "Chat route error:",
         error
       );
-      
+
+      if (
+        error?.code ===
+        "AI_QUEUE_FULL"
+      ) {
+        return res.status(429).json({
+          success: false,
+          rateLimited: true,
+          queueFull: true,
+          requestId,
+          message:
+            "Lawlite is handling many requests right now. Please try again in a moment.",
+        });
+      }
+
+      if (
+        error?.code ===
+        "AI_QUEUE_TIMEOUT"
+      ) {
+        return res.status(503).json({
+          success: false,
+          rateLimited: true,
+          queueTimeout: true,
+          requestId,
+          message:
+            "Your Lawlite request stayed in the queue too long. Please try again.",
+        });
+      }
 
       return res.status(500).json({
         success: false,
-
+        requestId,
         message:
           "Unable to generate a response right now.",
       });
-      
     }
-    
   }
-  
 );
-
 
 
 /*
@@ -2576,7 +2635,13 @@ githubSources:
 router.post(
   "/title",
   requireAuth,
+  requestContextMiddleware,
+  titleRateLimiter,
   async (req, res) => {
+    const requestId =
+      req.requestId ||
+      "unknown";
+
     try {
       const {
         message,
@@ -2591,17 +2656,26 @@ router.post(
           success: false,
           message:
             "Message is required.",
+          requestId,
         });
       }
 
       const title =
-        await generateChatTitle(
-          message.trim()
+        await runWithAiSlot(
+          req.user.uid,
+          () =>
+            generateChatTitle(
+              message.trim()
+            ),
+          {
+            requestId,
+          }
         );
 
       return res.json({
         success: true,
         title,
+        requestId,
       });
     } catch (error) {
       console.error(
@@ -2609,8 +2683,37 @@ router.post(
         error
       );
 
+      if (
+        error?.code ===
+        "AI_QUEUE_FULL"
+      ) {
+        return res.status(429).json({
+          success: false,
+          rateLimited: true,
+          queueFull: true,
+          requestId,
+          message:
+            "Lawlite is handling many requests right now. Please try again in a moment.",
+        });
+      }
+
+      if (
+        error?.code ===
+        "AI_QUEUE_TIMEOUT"
+      ) {
+        return res.status(503).json({
+          success: false,
+          rateLimited: true,
+          queueTimeout: true,
+          requestId,
+          message:
+            "Your title request stayed in the queue too long. Please try again.",
+        });
+      }
+
       return res.status(500).json({
         success: false,
+        requestId,
         message:
           "Unable to generate chat title.",
       });
@@ -2627,7 +2730,11 @@ router.post(
 
 router.post(
   "/web-search",
+  requireAuth,
+  requestContextMiddleware,
   async (req, res) => {
+    const requestId =
+  req.requestId || "unknown";
     try {
       const {
         query,

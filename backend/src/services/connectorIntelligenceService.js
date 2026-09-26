@@ -1,692 +1,757 @@
-/**
- * Lawlite Query Intelligence
- *
- * Purpose:
- * - Keep Lawlite focused on legal information.
- * - Refuse clearly off-topic questions before they reach Sarvam.
- * - Allow connected-workspace requests when they are relevant to
- *   legal/document information.
- * - Avoid an additional LLM call for routing.
- */
-
-const normalize = (value = "") =>
-  String(value)
-    .toLowerCase()
-    .replace(/[^a-z0-9@._'\-\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+/*
+|--------------------------------------------------------------------------
+| LAWLITE QUERY CLASSIFIER
+|--------------------------------------------------------------------------
+|
+| This service decides whether a user message should:
+|
+| 1. Go to normal legal reasoning
+| 2. Use legal + connected workspace context
+| 3. Be treated as normal conversation
+| 4. Be rejected as clearly outside Lawlite's scope
+|
+| IMPORTANT:
+|
+| "Not obviously legal" does NOT automatically mean OFF_TOPIC.
+|
+| Greetings, identity questions and capability questions should still
+| reach Sarvam so Lawlite can answer them naturally.
+|
+|--------------------------------------------------------------------------
+*/
 
 
 /*
 |--------------------------------------------------------------------------
-| LEGAL DOMAIN TERMS
+| NORMALIZE
 |--------------------------------------------------------------------------
 */
 
-const LEGAL_TERMS = [
+const normalize = (
+  value = ""
+) => {
+  return String(value)
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+
+/*
+|--------------------------------------------------------------------------
+| LEGAL TERMS
+|--------------------------------------------------------------------------
+*/
+
+const legalTerms = [
+
   "law",
   "laws",
   "legal",
   "legally",
-  "illegal",
-  "illegally",
-  "lawful",
-  "prohibited",
-  "legislation",
-
   "act",
   "acts",
-
   "article",
   "articles",
-
   "section",
   "sections",
 
+  "court",
+  "judge",
+  "judgment",
+  "judgement",
+  "case",
+  "cases",
+  "petition",
+  "appeal",
+
+  "contract",
+  "agreement",
   "clause",
   "clauses",
+  "terms",
+  "conditions",
 
-  "provision",
-  "provisions",
+  "notice",
+  "legal notice",
+  "notice period",
+
+  "rights",
+  "right",
+  "duty",
+  "duties",
+
+  "penalty",
+  "penalties",
+  "fine",
+  "fines",
+
+  "complaint",
+  "fir",
+  "police complaint",
+
+  "bail",
+  "arrest",
+  "crime",
+  "criminal",
+  "civil",
+
+  "property",
+  "rent",
+  "rental",
+  "lease",
+  "landlord",
+  "tenant",
+
+  "employment",
+  "employee",
+  "employer",
+  "job",
+  "termination",
+  "resignation",
+  "salary",
+  "workplace",
+
+  "tax",
+  "taxes",
+  "gst",
+  "income tax",
+
+  "consumer",
+  "consumer complaint",
+  "refund",
+  "warranty",
+
+  "divorce",
+  "marriage",
+  "family",
+  "custody",
+  "maintenance",
+
+  "inheritance",
+  "will",
+  "succession",
+
+  "copyright",
+  "patent",
+  "trademark",
+  "intellectual property",
 
   "constitution",
   "constitutional",
 
-  "court",
-  "courts",
-
-  "judgment",
-  "judgement",
-
-  "verdict",
-
-  "case",
-  "cases",
-
-  "lawsuit",
-  "litigation",
-
-  "sue",
-  "sued",
-
-  "petition",
-  "appeal",
-  "appealed",
-
-  "tribunal",
-
-  "arbitration",
-  "arbitrator",
-
-  "notice",
-  "legal notice",
-
-  "summons",
-  "warrant",
-  "bail",
-
-  "fir",
-  "police complaint",
-  "complaint",
-
-  "contract",
-  "contracts",
-
-  "agreement",
-  "agreements",
-
-  "lease",
-  "rental agreement",
-
-  "employment",
-  "employer",
-  "employee",
-
-  "salary",
-  "wage",
-
-  "termination",
-  "terminate",
-  "resignation",
-
-  "offer letter",
-  "appointment letter",
-
-  "nda",
-  "non disclosure",
-
-  "privacy policy",
-  "privacy law",
-
-  "data protection",
-  "personal data",
-
-  "consumer rights",
-  "consumer protection",
-
-  "refund",
-
-  "copyright",
-  "copyrights",
-
-  "trademark",
-
-  "patent",
-
-  "intellectual property",
-
-  "ipc",
-  "crpc",
-  "cpc",
-
-  "bns",
-  "bnss",
-  "bsa",
-
-  "gst law",
-  "tax law",
-  "income tax",
-  "tax notice",
-
-  "property law",
-  "inheritance",
-  "succession",
-
-  "divorce",
-  "marriage law",
-  "family law",
-
-  "criminal law",
-  "civil law",
-
-  "corporate law",
-  "company law",
-
-  "labour law",
-  "labor law",
-
-  "cyber law",
-  "cybercrime",
-
-  "right to information",
-  "rti",
-
-  "fundamental right",
-  "fundamental rights",
-
-  "directive principles",
-
   "regulation",
   "regulations",
-
   "rule",
   "rules",
-
-  "compliance",
-
-  "liability",
-  "liable",
-
-  "rights",
-
-  "duty",
-  "duties",
-
-  "obligation",
-  "obligations",
-
-  "penalty",
-  "penalties",
-
-  "fine",
-
-  "offence",
-  "offense",
-
-  "breach",
-  "damages",
-
-  "indemnity",
-
-  "jurisdiction",
-
-  "legal advice",
-  "legal information",
-  "legal rights",
-  "legal remedy",
-
-  "remedy",
-
-  "statute",
-  "statutory",
-
   "amendment",
   "amendments",
 
-  "bill",
-
-  "ordinance",
-
-  "notification",
-];
-
-
-/*
-|--------------------------------------------------------------------------
-| CONNECTED SERVICES
-|--------------------------------------------------------------------------
-*/
-
-const CONNECTOR_TERMS = {
-  gmail: [
-    "gmail",
-    "email",
-    "emails",
-    "mail",
-    "mails",
-    "inbox",
-    "in my inbox",
-    "my email",
-    "my emails",
-  ],
-
-  github: [
-    "github",
-    "repository",
-    "repositories",
-    "repo",
-    "repos",
-    "source code",
-    "my code",
-    "project code",
-  ],
-
-  notion: [
-    "notion",
-    "notion page",
-    "notion pages",
-    "notion notes",
-    "my notion",
-  ],
-
-  dropbox: [
-    "dropbox",
-    "drop box",
-    "my dropbox",
-  ],
-
-  drive: [
-    "google drive",
-    "drive",
-    "my drive",
-    "my document",
-    "my documents",
-    "my file",
-    "my files",
-    "my pdf",
-  ],
-};
-
-
-/*
-|--------------------------------------------------------------------------
-| CONNECTOR ACTION WORDS
-|--------------------------------------------------------------------------
-*/
-
-const CONNECTOR_ACTION_TERMS = [
-  "search",
-  "find",
-  "check",
-  "look",
-  "read",
-  "show",
-  "list",
-  "browse",
-  "open",
-  "go through",
-  "according to",
-  "what does",
-  "what is in",
-  "look through",
-];
-
-
-/*
-|--------------------------------------------------------------------------
-| LEGAL CONTEXT TERMS
-|--------------------------------------------------------------------------
-|
-| These are especially important for connector requests.
-|
-| Example:
-|
-| "Search my Gmail for my revised contract"
-|
-| Gmail + search + contract
-| => allowed
-|
-| But:
-|
-| "Search my Gmail for movie tickets"
-|
-| Gmail + search + no legal context
-| => refused
-|
-*/
-
-const LEGAL_CONTEXT_TERMS = [
-  "contract",
-  "agreement",
-  "notice",
-  "policy",
-  "clause",
-  "termination",
-  "terminate",
-  "employment",
-  "complaint",
-  "court",
-  "case",
-  "legal",
-  "law",
-  "rights",
-  "obligation",
-  "liability",
-  "compliance",
-  "regulation",
-  "judgment",
-  "judgement",
-  "verdict",
-  "tax",
-  "insurance",
-  "lease",
-  "deed",
   "privacy",
   "data protection",
-  "copyright",
-  "trademark",
-  "refund",
+  "cyber law",
+  "cybercrime",
+
+  "fir",
+  "fiscal",
 ];
 
 
 /*
 |--------------------------------------------------------------------------
-| CLEARLY OFF-TOPIC PATTERNS
+| LEGAL CONTEXT PHRASES
+|--------------------------------------------------------------------------
+|
+| Useful when the message is written casually and may not contain a
+| direct legal keyword.
 |--------------------------------------------------------------------------
 */
 
-const CLEAR_OFF_TOPIC_PATTERNS = [
-  /\b(stock|stocks|share price|crypto|bitcoin|ethereum|forex|trading)\b/i,
+const legalContextTerms = [
 
-  /\b(cricket|football|soccer|basketball|tennis|ipl|nba|fifa|match|score)\b/i,
+  "what can i do legally",
+  "what should i do legally",
+  "is this legal",
+  "is that legal",
+  "can they legally",
+  "can i legally",
 
-  /\b(recipe|recipes|biryani|pasta|cooking|cook)\b/i,
+  "my rights",
+  "my legal rights",
+  "my case",
+  "my contract",
+  "my agreement",
+  "my notice",
+  "my lease",
+  "my employer",
+  "my landlord",
+  "my tenant",
 
-  /\b(movie|movies|series|tv show|anime|manga|celebrity|actor|actress)\b/i,
+  "can i sue",
+  "can they sue",
+  "can i complain",
+  "can i file a complaint",
+  "can i file a case",
 
-  /\b(gaming|game|games|playstation|xbox|steam)\b/i,
+  "what happens if i",
+  "what are my options",
 
-  /\b(laptop|phone|smartphone|headphones|gpu|cpu|monitor|computer)\b/i,
+  "according to the law",
+  "under indian law",
+  "under the law",
 
-  /\b(math|mathematics|calculus|algebra|geometry|physics|chemistry|biology)\b/i,
-
-  /\b(homework|assignment|exam answer|solve this equation)\b/i,
-
-  /\b(weather|temperature|forecast)\b/i,
-
-  /\b(vacation|travel itinerary|tourist|hotel recommendation|restaurant recommendation)\b/i,
-
-  /\b(song lyrics|lyrics|write a song|poem|poetry|birthday message|wedding message)\b/i,
-
-  /\b(python program|javascript code|write code|debug this code|coding help)\b/i,
 ];
 
 
 /*
 |--------------------------------------------------------------------------
-| SCORE HELPERS
+| CONNECTOR TERMS
 |--------------------------------------------------------------------------
 */
 
-const scoreMatches = (
+const connectorTerms = [
+
+  "google drive",
+  "drive",
+  "dropbox",
+  "notion",
+  "gmail",
+  "github",
+  "slack",
+  "calendar",
+
+];
+
+
+/*
+|--------------------------------------------------------------------------
+| CONNECTOR ACTIONS
+|--------------------------------------------------------------------------
+*/
+
+const connectorActions = [
+
+  "find",
+  "search",
+  "open",
+  "read",
+  "check",
+  "look",
+  "show",
+  "list",
+  "get",
+  "analyze",
+  "analyse",
+  "summarize",
+  "summarise",
+  "review",
+  "compare",
+  "look through",
+
+];
+
+
+/*
+|--------------------------------------------------------------------------
+| CONVERSATIONAL / IDENTITY PHRASES
+|--------------------------------------------------------------------------
+|
+| These should NEVER be treated as OFF_TOPIC.
+|--------------------------------------------------------------------------
+*/
+
+const conversationalPatterns = [
+
+  /*
+   * Greetings
+   */
+
+  /^hi[!. ]*$/,
+  /^hello[!. ]*$/,
+  /^hey[!. ]*$/,
+  /^hey lawlite[!. ]*$/,
+  /^hi lawlite[!. ]*$/,
+  /^hello lawlite[!. ]*$/,
+
+  /^good morning[!. ]*$/,
+  /^good afternoon[!. ]*$/,
+  /^good evening[!. ]*$/,
+  /^good night[!. ]*$/,
+
+
+  /*
+   * Identity
+   */
+
+  /\bwho are you\b/,
+  /\bwho r u\b/,
+  /\bwhat are you\b/,
+  /\bwhat is lawlite\b/,
+  /\bwho is lawlite\b/,
+  /\bwhat do you do\b/,
+  /\bwhat can you do\b/,
+  /\bwhat all can you do\b/,
+  /\bhow can you help me\b/,
+  /\bhow do you work\b/,
+  /\bwhat can i ask you\b/,
+  /\bwhat can i use you for\b/,
+
+
+  /*
+   * Capability questions
+   */
+
+  /\bwhat are your capabilities\b/,
+  /\bwhat features do you have\b/,
+  /\bwhat features does lawlite have\b/,
+  /\bhow can lawlite help\b/,
+  /\bhow does lawlite help\b/,
+  /\bwhat does lawlite do\b/,
+  /\bcan you help me\b/,
+  /\bcan you explain\b/,
+  /\bcan you help\b/,
+
+
+  /*
+   * Simple acknowledgement / conversation
+   */
+
+  /^thanks[!. ]*$/,
+  /^thank you[!. ]*$/,
+  /^thx[!. ]*$/,
+  /^okay[!. ]*$/,
+  /^ok[!. ]*$/,
+  /^cool[!. ]*$/,
+  /^nice[!. ]*$/,
+  /^great[!. ]*$/,
+  /^perfect[!. ]*$/,
+  /^got it[!. ]*$/,
+  /^understood[!. ]*$/,
+
+];
+
+
+/*
+|--------------------------------------------------------------------------
+| CLEAR OFF-TOPIC PATTERNS
+|--------------------------------------------------------------------------
+|
+| Only reject messages when they are clearly asking for something
+| outside Lawlite's purpose.
+|
+| We intentionally do NOT reject merely because no legal keyword exists.
+|--------------------------------------------------------------------------
+*/
+
+const clearlyOffTopicPatterns = [
+
+  /*
+   * Programming
+   */
+
+  /\bwrite (me )?(a )?(python|javascript|java|c|c\+\+|html|css|react|node\.?js) code\b/,
+  /\bdebug (my )?(python|javascript|java|c|c\+\+|react|node)\b/,
+  /\bprogramming question\b/,
+  /\bcode this for me\b/,
+
+
+  /*
+   * Food / recipes
+   */
+
+  /\bgive me a recipe\b/,
+  /\bhow do i cook\b/,
+  /\bhow to cook\b/,
+  /\brecipe for\b/,
+
+
+  /*
+   * Fitness
+   */
+
+  /\bworkout plan\b/,
+  /\bgym routine\b/,
+  /\bexercise routine\b/,
+  /\bweight loss plan\b/,
+
+
+  /*
+   * Entertainment
+   */
+
+  /\bmovie recommendation\b/,
+  /\bfilm recommendation\b/,
+  /\bwhat should i watch\b/,
+  /\bsong recommendation\b/,
+  /\bplaylist\b/,
+
+
+  /*
+   * Sports
+   */
+
+  /\bmatch score\b/,
+  /\blive score\b/,
+  /\bfootball score\b/,
+  /\bcricket score\b/,
+  /\bbasketball score\b/,
+  /\btennis score\b/,
+
+
+  /*
+   * Weather
+   */
+
+  /\bwhat(?:'s| is) the weather\b/,
+  /\bweather today\b/,
+  /\btemperature today\b/,
+
+
+  /*
+   * Travel
+   */
+
+  /\bflight booking\b/,
+  /\bhotel booking\b/,
+  /\btravel itinerary\b/,
+  /\btourist places\b/,
+
+
+  /*
+   * Shopping
+   */
+
+  /\bbest phone to buy\b/,
+  /\bwhich phone should i buy\b/,
+  /\bbest laptop to buy\b/,
+  /\bproduct recommendation\b/,
+
+];
+
+
+/*
+|--------------------------------------------------------------------------
+| MATCH HELPER
+|--------------------------------------------------------------------------
+*/
+
+const containsAny = (
   text,
   terms
 ) => {
-  let score = 0;
-  const matches = [];
-
-  for (const term of terms) {
-    if (text.includes(term)) {
-      score +=
-        term.length >= 8
-          ? 2
-          : 1;
-
-      matches.push(term);
-    }
-  }
-
-  return {
-    score,
-    matches,
-  };
-};
-
-
-/*
-|--------------------------------------------------------------------------
-| CONNECTOR DETECTION
-|--------------------------------------------------------------------------
-*/
-
-const detectConnectors = (
-  text
-) => {
-  const connectors = [];
-
-  for (
-    const [
-      name,
-      terms,
-    ] of Object.entries(
-      CONNECTOR_TERMS
-    )
-  ) {
-    if (
-      terms.some(
-        (term) =>
-          text.includes(term)
+  return terms.some(
+    (term) =>
+      text.includes(
+        term
       )
-    ) {
-      connectors.push(name);
-    }
-  }
-
-  return connectors;
+  );
 };
 
 
 /*
 |--------------------------------------------------------------------------
-| MAIN CLASSIFIER
+| CLASSIFY QUERY
 |--------------------------------------------------------------------------
 */
 
 const classifyLawliteQuery = (
   message = ""
 ) => {
+
   const text =
     normalize(message);
 
+
   /*
-  |--------------------------------------------------------------------------
-  | EMPTY INPUT
-  |--------------------------------------------------------------------------
-  */
+   * Empty input
+   */
 
   if (!text) {
     return {
-      domain: "OFF_TOPIC",
-      confidence: 1,
-      allowed: false,
-      refusal: true,
-      needsSarvam: false,
+      domain:
+        "CONVERSATIONAL",
+
+      confidence:
+        1,
+
+      allowed:
+        true,
+
+      refusal:
+        false,
+
+      needsSarvam:
+        false,
+
       connectors: [],
+
       reasons: [
-        "empty message",
+        "Empty query",
       ],
     };
   }
 
 
   /*
-  |--------------------------------------------------------------------------
-  | SIGNALS
-  |--------------------------------------------------------------------------
-  */
+   * -------------------------------------------------------
+   * CONVERSATIONAL
+   * -------------------------------------------------------
+   *
+   * Check this FIRST.
+   *
+   * A message like:
+   *
+   * "who r u"
+   * "what all can you do"
+   * "hello"
+   *
+   * should reach Sarvam.
+   */
 
-  const legal =
-    scoreMatches(
-      text,
-      LEGAL_TERMS
-    );
-
-  const legalContext =
-    scoreMatches(
-      text,
-      LEGAL_CONTEXT_TERMS
-    );
-
-  const connectors =
-    detectConnectors(
-      text
-    );
-
-  const actionScore =
-    scoreMatches(
-      text,
-      CONNECTOR_ACTION_TERMS
-    );
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | OFF-TOPIC DETECTION
-  |--------------------------------------------------------------------------
-  */
-
-  const clearOffTopic =
-    CLEAR_OFF_TOPIC_PATTERNS.some(
+  const isConversational =
+    conversationalPatterns.some(
       (pattern) =>
         pattern.test(text)
     );
 
 
-  /*
-  |--------------------------------------------------------------------------
-  | LEGAL REQUEST
-  |--------------------------------------------------------------------------
-  */
+  if (isConversational) {
 
-  /**
-   * Legal signal always wins over a generic off-topic signal.
-   *
-   * Example:
-   *
-   * "Is crypto trading regulated in India?"
-   *
-   * contains "crypto" but is still clearly a legal question.
-   */
-
-  if (
-    legal.score > 0 ||
-    legalContext.score >= 2
-  ) {
     return {
       domain:
-        connectors.length > 0
-          ? "LEGAL_CONNECTOR"
-          : "LEGAL",
-
-      confidence:
-        Math.min(
-          0.99,
-          0.78 +
-            legal.score *
-              0.035 +
-            legalContext.score *
-              0.025
-        ),
-
-      allowed: true,
-      refusal: false,
-      needsSarvam: true,
-
-      connectors,
-
-      reasons: [
-        ...legal.matches,
-        ...legalContext.matches,
-      ].slice(0, 8),
-    };
-  }
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | CONNECTOR REQUEST
-  |--------------------------------------------------------------------------
-  |
-  | A connector-only request is NOT automatically accepted.
-  |
-  | It must also have a legal/document context.
-  |
-  | This prevents Lawlite from silently becoming:
-  |
-  | "general Gmail assistant"
-  | "general GitHub assistant"
-  | "general Dropbox assistant"
-  |
-  */
-
-  if (
-    connectors.length > 0 &&
-    actionScore.score > 0 &&
-    legalContext.score > 0
-  ) {
-    return {
-      domain:
-        "LEGAL_CONNECTOR",
-
-      confidence: 0.96,
-
-      allowed: true,
-      refusal: false,
-      needsSarvam: true,
-
-      connectors,
-
-      reasons: [
-        ...connectors,
-        ...actionScore.matches,
-        ...legalContext.matches,
-      ].slice(0, 8),
-    };
-  }
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | CLEAR OFF-TOPIC
-  |--------------------------------------------------------------------------
-  */
-
-  if (clearOffTopic) {
-    return {
-      domain:
-        "OFF_TOPIC",
+        "CONVERSATIONAL",
 
       confidence:
         0.98,
 
-      allowed: false,
-      refusal: true,
-      needsSarvam: false,
+      allowed:
+        true,
 
-      connectors,
+      refusal:
+        false,
+
+      needsSarvam:
+        true,
+
+      connectors: [],
 
       reasons: [
-        "clear non-legal topic",
+        "Normal conversation or Lawlite capability question",
       ],
     };
   }
 
 
   /*
-  |--------------------------------------------------------------------------
-  | SPECIALIZED-DOMAIN FALLBACK
-  |--------------------------------------------------------------------------
-  |
-  | Ambiguous questions are rejected instead of being sent to Sarvam
-  | as general-purpose chat.
-  |
-  */
+   * -------------------------------------------------------
+   * LEGAL SIGNALS
+   * -------------------------------------------------------
+   */
+
+  const hasLegalTerms =
+    containsAny(
+      text,
+      legalTerms
+    );
+
+
+  const hasLegalContext =
+    containsAny(
+      text,
+      legalContextTerms
+    );
+
+
+  /*
+   * -------------------------------------------------------
+   * CONNECTOR SIGNALS
+   * -------------------------------------------------------
+   */
+
+  const matchedConnectors =
+    connectorTerms.filter(
+      (connector) =>
+        text.includes(
+          connector
+        )
+    );
+
+
+  const hasConnector =
+    matchedConnectors.length >
+    0;
+
+
+  const hasConnectorAction =
+    containsAny(
+      text,
+      connectorActions
+    );
+
+
+  /*
+   * -------------------------------------------------------
+   * LEGAL + CONNECTOR
+   * -------------------------------------------------------
+   *
+   * Examples:
+   *
+   * "check my contract in drive"
+   * "find my legal notice in Gmail"
+   * "read my agreement from Dropbox"
+   */
+
+  if (
+    hasConnector &&
+    (
+      hasLegalTerms ||
+      hasLegalContext ||
+      hasConnectorAction
+    )
+  ) {
+
+    return {
+      domain:
+        "LEGAL_CONNECTOR",
+
+      confidence:
+        0.95,
+
+      allowed:
+        true,
+
+      refusal:
+        false,
+
+      needsSarvam:
+        true,
+
+      connectors:
+        matchedConnectors,
+
+      reasons: [
+        "Legal request involving connected workspace",
+      ],
+    };
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * LEGAL
+   * -------------------------------------------------------
+   */
+
+  if (
+    hasLegalTerms ||
+    hasLegalContext
+  ) {
+
+    return {
+      domain:
+        "LEGAL",
+
+      confidence:
+        0.95,
+
+      allowed:
+        true,
+
+      refusal:
+        false,
+
+      needsSarvam:
+        true,
+
+      connectors: [],
+
+      reasons: [
+        "Legal information or legal-context request",
+      ],
+    };
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * CLEAR OFF-TOPIC
+   * -------------------------------------------------------
+   *
+   * Only reject when the message is strongly identifiable
+   * as another domain.
+   */
+
+  const isClearlyOffTopic =
+    clearlyOffTopicPatterns.some(
+      (pattern) =>
+        pattern.test(text)
+    );
+
+
+  if (isClearlyOffTopic) {
+
+    return {
+      domain:
+        "OFF_TOPIC",
+
+      confidence:
+        0.95,
+
+      allowed:
+        false,
+
+      refusal:
+        true,
+
+      needsSarvam:
+        false,
+
+      connectors: [],
+
+      reasons: [
+        "Clearly outside Lawlite's legal-assistance scope",
+      ],
+    };
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * AMBIGUOUS / UNKNOWN
+   * -------------------------------------------------------
+   *
+   * IMPORTANT:
+   *
+   * We allow ambiguous messages to reach Sarvam.
+   *
+   * Sarvam can then understand the actual intent instead
+   * of the deterministic classifier incorrectly refusing it.
+   */
 
   return {
     domain:
-      "OFF_TOPIC",
+      "CONVERSATIONAL",
 
     confidence:
-      0.72,
+      0.55,
 
-    allowed: false,
-    refusal: true,
-    needsSarvam: false,
+    allowed:
+      true,
 
-    connectors,
+    refusal:
+      false,
+
+    needsSarvam:
+      true,
+
+    connectors:
+      hasConnector
+        ? matchedConnectors
+        : [],
 
     reasons: [
-      "no sufficiently strong legal signal",
+      "Intent is not clearly off-topic",
+      "Allowing Sarvam to interpret the request",
     ],
   };
 };
@@ -699,8 +764,17 @@ const classifyLawliteQuery = (
 */
 
 const getLawliteRefusalMessage =
-  () =>
-    "I’m Lawlite, focused on helping with legal information and your connected legal documents. I can’t help with that topic. Try asking me about a law, legal document, contract, notice, case, legal right, or something from your connected workspace.";
+  () => {
+
+    return `
+I’m Lawlite, focused on helping with legal information and your connected legal documents.
+
+I can’t help with that topic.
+
+Try asking me about a law, legal document, contract, notice, case, legal right, or something from your connected workspace.
+`.trim();
+
+  };
 
 
 /*
@@ -710,6 +784,7 @@ const getLawliteRefusalMessage =
 */
 
 module.exports = {
+  normalize,
   classifyLawliteQuery,
   getLawliteRefusalMessage,
 };

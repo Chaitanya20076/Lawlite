@@ -14,6 +14,7 @@ import {
   Moon,
   MoreHorizontal,
   Paperclip,
+  Play,
   Plus,
   RotateCcw,
   Share2,
@@ -153,6 +154,8 @@ const Chat = () => {
   const [deleteChatTarget, setDeleteChatTarget] = useState(null);
   const [capsuleChatTarget, setCapsuleChatTarget] = useState(null);
   const [chatActionNotice, setChatActionNotice] = useState("");
+  const [openVideoReferencesId, setOpenVideoReferencesId] = useState(null);
+  const [activeVideoByMessageId, setActiveVideoByMessageId] = useState({});
   const [connectorsOpen, setConnectorsOpen] = useState(false);
   
 const [connectorNotice, setConnectorNotice] = useState("");
@@ -1379,6 +1382,8 @@ const handleConnectorClick = (connector) => {
     setMessage("");
     setIsSending(false);
     setCurrentChatId(null);
+    setOpenVideoReferencesId(null);
+    setActiveVideoByMessageId({});
 
     localStorage.removeItem(
       ACTIVE_CHAT_STORAGE_KEY
@@ -1474,6 +1479,8 @@ const handleConnectorClick = (connector) => {
       setCurrentChatId(null);
       setMessage("");
       setIsSending(false);
+      setOpenVideoReferencesId(null);
+      setActiveVideoByMessageId({});
 
       localStorage.removeItem(
         ACTIVE_CHAT_STORAGE_KEY
@@ -2040,6 +2047,8 @@ const handleConnectorClick = (connector) => {
     setMessages(chat.messages || []);
     setMessage("");
     setIsSending(false);
+    setOpenVideoReferencesId(null);
+    setActiveVideoByMessageId({});
 
     localStorage.setItem(
       ACTIVE_CHAT_STORAGE_KEY,
@@ -2091,6 +2100,229 @@ const handleConnectorClick = (connector) => {
       console.error("Google Drive context error:", error);
       return "";
     }
+  };
+
+  /*
+   * =========================================
+   * YOUTUBE VIDEO REFERENCES
+   * =========================================
+   *
+   * Frontend contract:
+   * POST /api/chat/youtube
+   *
+   * The backend can use Serper to search YouTube for
+   * the current legal context. The frontend accepts
+   * several common response shapes so the backend can
+   * stay flexible while we finish the integration.
+   */
+
+  const getYouTubeVideoId = (value) => {
+    if (!value || typeof value !== "string") {
+      return "";
+    }
+
+    const input = value.trim();
+
+    if (/^[A-Za-z0-9_-]{11}$/.test(input)) {
+      return input;
+    }
+
+    try {
+      const url = new URL(input);
+      const hostname = url.hostname.toLowerCase();
+
+      if (hostname === "youtu.be") {
+        return url.pathname
+          .split("/")
+          .filter(Boolean)[0] || "";
+      }
+
+      if (
+        hostname === "youtube.com" ||
+        hostname === "www.youtube.com" ||
+        hostname === "m.youtube.com"
+      ) {
+        const queryId = url.searchParams.get("v");
+
+        if (queryId) {
+          return queryId;
+        }
+
+        const pathParts = url.pathname
+          .split("/")
+          .filter(Boolean);
+
+        const videoIndex = pathParts.findIndex(
+          (part) =>
+            part === "shorts" ||
+            part === "embed" ||
+            part === "live"
+        );
+
+        if (videoIndex !== -1) {
+          return pathParts[videoIndex + 1] || "";
+        }
+      }
+    } catch {
+      return "";
+    }
+
+    const fallbackMatch = input.match(
+      /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/
+    );
+
+    return fallbackMatch?.[1] || "";
+  };
+
+  const normalizeYouTubeReferences = (references) => {
+    if (!Array.isArray(references)) {
+      return [];
+    }
+
+    const seen = new Set();
+
+    return references
+      .map((item) => {
+        if (!item) {
+          return null;
+        }
+
+        const link =
+          item.link ||
+          item.url ||
+          item.youtubeUrl ||
+          item.videoUrl ||
+          "";
+
+        const videoId =
+          item.videoId ||
+          item.id ||
+          getYouTubeVideoId(link);
+
+        const cleanId = getYouTubeVideoId(videoId);
+
+        if (!cleanId || seen.has(cleanId)) {
+          return null;
+        }
+
+        seen.add(cleanId);
+
+        return {
+          id: cleanId,
+          title:
+            item.title ||
+            "YouTube video reference",
+          channel:
+            item.channel ||
+            item.channelName ||
+            item.source ||
+            "YouTube",
+          description:
+            item.snippet ||
+            item.description ||
+            "",
+          thumbnail:
+            item.thumbnail ||
+            item.thumbnailUrl ||
+            item.imageUrl ||
+            `https://i.ytimg.com/vi/${cleanId}/hqdefault.jpg`,
+          duration: item.duration || "",
+          publishedAt:
+            item.publishedAt ||
+            item.date ||
+            "",
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 5);
+  };
+
+  const getYouTubeReferences = async (conversation) => {
+    if (!Array.isArray(conversation) || !conversation.length) {
+      return [];
+    }
+
+    try {
+      const idToken = await getFirebaseIdToken();
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/chat/youtube`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            conversation,
+          }),
+        }
+      );
+
+      /*
+       * The frontend is intentionally tolerant while the
+       * backend Serper route is being added. A missing route
+       * simply means there are currently no video references.
+       */
+      if (!response.ok) {
+        return [];
+      }
+
+      const data = await response.json();
+
+      if (!data?.success) {
+        return [];
+      }
+
+      const rawReferences =
+        data.videos ||
+        data.videoReferences ||
+        data.youtubeVideos ||
+        data.youtube ||
+        data.results ||
+        [];
+
+      return normalizeYouTubeReferences(
+        rawReferences
+      );
+    } catch (error) {
+      console.warn(
+        "YouTube references unavailable:",
+        error
+      );
+      return [];
+    }
+  };
+
+  const attachYouTubeReferences = async (
+    messageId,
+    conversation
+  ) => {
+    if (!messageId) {
+      return [];
+    }
+
+    const references =
+      await getYouTubeReferences(
+        conversation
+      );
+
+    if (!references.length) {
+      return [];
+    }
+
+    setMessages((previous) =>
+      previous.map((item) =>
+        item.id === messageId
+          ? {
+              ...item,
+              videoReferences: references,
+            }
+          : item
+      )
+    );
+
+    return references;
   };
 
   /*
@@ -2617,12 +2849,15 @@ const handleRegenerateResponse = async (
         connectedContext
       );
 
+    const finalAnswer =
+      newAnswer ||
+      "I wasn't able to generate a response right now.";
+
     const updatedResponse = {
       ...response,
-      text:
-        newAnswer ||
-        "I wasn't able to generate a response right now.",
+      text: finalAnswer,
       typing: true,
+      videoReferences: [],
     };
 
     setMessages((previous) =>
@@ -2637,6 +2872,24 @@ const handleRegenerateResponse = async (
       updatedResponse.text,
       response.id
     );
+
+    try {
+      await attachYouTubeReferences(
+        response.id,
+        [
+          ...conversation,
+          {
+            role: "assistant",
+            content: finalAnswer,
+          },
+        ]
+      );
+    } catch (videoError) {
+      console.warn(
+        "YouTube reference lookup failed after regeneration:",
+        videoError
+      );
+    }
   } catch (error) {
     console.error(
       "Regenerate response failed:",
@@ -2734,6 +2987,7 @@ const handleRegenerateResponse = async (
   text: "",
   prompt: trimmedMessage,
   typing: true,
+  videoReferences: [],
 };
 
       setMessages((previous) => [
@@ -2741,11 +2995,39 @@ const handleRegenerateResponse = async (
         assistantMessage,
       ]);
 
-      await typeAssistantMessage(
+      const finalAnswer =
         answer ||
-          "I wasn't able to generate a response right now.",
+        "I wasn't able to generate a response right now.";
+
+      await typeAssistantMessage(
+        finalAnswer,
         assistantMessageId
       );
+
+      /*
+       * Look for YouTube references using the complete
+       * context, including Lawlite's latest answer.
+       * This never blocks the main legal response.
+       */
+
+      try {
+        await attachYouTubeReferences(
+          assistantMessageId,
+          [
+            ...conversation,
+            {
+              role: "assistant",
+              content: finalAnswer,
+            },
+          ]
+        );
+      } catch (videoError) {
+        console.warn(
+          "YouTube reference lookup failed:",
+          videoError
+        );
+      }
+
       /*
  * Generate the conversation title only
  * after Lawlite has produced the response.
@@ -3545,6 +3827,189 @@ if (
       </span>
     )}
   </div>
+
+  {item.role === "assistant" &&
+    !item.typing &&
+    Array.isArray(item.videoReferences) &&
+    item.videoReferences.length > 0 && (
+      <div className="chat-video-references">
+
+        <button
+          type="button"
+          className={`chat-video-reference-toggle ${
+            String(openVideoReferencesId) ===
+            String(item.id)
+              ? "open"
+              : ""
+          }`}
+          onClick={() => {
+            const isOpen =
+              String(openVideoReferencesId) ===
+              String(item.id);
+
+            if (isOpen) {
+              setOpenVideoReferencesId(null);
+              return;
+            }
+
+            setOpenVideoReferencesId(item.id);
+
+            setActiveVideoByMessageId(
+              (previous) => ({
+                ...previous,
+                [item.id]:
+                  previous[item.id] ||
+                  item.videoReferences[0]?.id,
+              })
+            );
+          }}
+          aria-expanded={
+            String(openVideoReferencesId) ===
+            String(item.id)
+          }
+        >
+          <span className="chat-video-reference-icon">
+            <Play size={13} fill="currentColor" />
+          </span>
+
+          <span className="chat-video-reference-label">
+            Video references
+          </span>
+
+          <span className="chat-video-reference-count">
+            {item.videoReferences.length}
+          </span>
+
+          <ChevronDown
+            size={14}
+            className="chat-video-reference-chevron"
+          />
+        </button>
+
+        {String(openVideoReferencesId) ===
+          String(item.id) && (
+          <div className="chat-video-reference-panel">
+
+            <div className="chat-video-reference-list">
+              {item.videoReferences.map(
+                (video) => {
+                  const isActive =
+                    String(
+                      activeVideoByMessageId[
+                        item.id
+                      ]
+                    ) ===
+                    String(video.id);
+
+                  return (
+                    <button
+                      type="button"
+                      className={`chat-video-reference-item ${
+                        isActive
+                          ? "active"
+                          : ""
+                      }`}
+                      key={video.id}
+                      onClick={() =>
+                        setActiveVideoByMessageId(
+                          (previous) => ({
+                            ...previous,
+                            [item.id]: video.id,
+                          })
+                        )
+                      }
+                    >
+                      <img
+                        src={video.thumbnail}
+                        alt=""
+                        className="chat-video-reference-thumbnail"
+                        loading="lazy"
+                        onError={(event) => {
+                          event.currentTarget.style.visibility =
+                            "hidden";
+                        }}
+                      />
+
+                      <span className="chat-video-reference-info">
+                        <strong>
+                          {video.title}
+                        </strong>
+
+                        <span>
+                          {video.channel ||
+                            "YouTube"}
+                          {video.duration
+                            ? ` • ${video.duration}`
+                            : ""}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                }
+              )}
+            </div>
+
+            {(() => {
+              const activeVideo =
+                item.videoReferences.find(
+                  (video) =>
+                    String(video.id) ===
+                    String(
+                      activeVideoByMessageId[
+                        item.id
+                      ]
+                    )
+                ) || item.videoReferences[0];
+
+              if (!activeVideo?.id) {
+                return null;
+              }
+
+              return (
+                <div className="chat-video-player-wrap">
+                  <div className="chat-video-player">
+                    <iframe
+                      src={`https://www.youtube.com/embed/${activeVideo.id}?rel=0&modestbranding=1`}
+                      title={
+                        activeVideo.title ||
+                        "YouTube video reference"
+                      }
+                      loading="lazy"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      referrerPolicy="strict-origin-when-cross-origin"
+                    />
+                  </div>
+
+                  <div className="chat-video-player-meta">
+                    <div>
+                      <strong>
+                        {activeVideo.title}
+                      </strong>
+
+                      <span>
+                        {activeVideo.channel ||
+                          "YouTube"}
+                      </span>
+                    </div>
+
+                    <a
+                      href={`https://www.youtube.com/watch?v=${activeVideo.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open on YouTube
+                    </a>
+                  </div>
+                </div>
+              );
+            })()}
+
+          </div>
+        )}
+
+      </div>
+    )}
 
   {item.role === "assistant" &&
     item.text &&

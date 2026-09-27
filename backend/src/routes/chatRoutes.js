@@ -9,7 +9,9 @@ const {
 const {
   searchWeb,
 } = require("../services/serperService");
-
+const {
+  searchYouTubeVideos,
+} = require("../services/youtubeService");
 const {
   getRelevantDriveContext,
   listDriveTree,
@@ -2809,5 +2811,158 @@ router.post(
   }
 );
 
+/*
+|--------------------------------------------------------------------------
+| YOUTUBE VIDEO REFERENCES
+|--------------------------------------------------------------------------
+*/
 
+router.post(
+  "/youtube",
+  requireAuth,
+  requestContextMiddleware,
+  chatRateLimiter,
+  async (req, res) => {
+    const requestId =
+      req.requestId ||
+      "unknown";
+
+    try {
+      const {
+        conversation = [],
+      } = req.body;
+
+      if (
+        !Array.isArray(
+          conversation
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Conversation must be an array.",
+          requestId,
+        });
+      }
+
+      if (
+        conversation.length ===
+        0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Conversation cannot be empty.",
+          requestId,
+        });
+      }
+
+      const cleanConversation =
+        conversation
+          .filter(
+            (message) =>
+              message &&
+              [
+                "user",
+                "assistant",
+              ].includes(
+                message.role
+              ) &&
+              typeof message.content ===
+                "string"
+          )
+          .map(
+            (message) => ({
+              role:
+                message.role,
+
+              content:
+                message.content.trim(),
+            })
+          )
+          .filter(
+            (message) =>
+              message.content
+                .length > 0
+          );
+
+      if (
+        cleanConversation.length ===
+        0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "No valid messages were provided.",
+          requestId,
+        });
+      }
+
+      const result =
+        await searchYouTubeVideos(
+          cleanConversation,
+          5
+        );
+
+      /*
+       * No videos is a normal outcome.
+       * It should NOT break the main legal chat.
+       */
+
+      if (
+        !result.success
+      ) {
+        return res.json({
+          success: false,
+
+          requestId,
+
+          query:
+            result.query ||
+            "",
+
+          videos: [],
+
+          message:
+            result.error ||
+            "YouTube references are unavailable right now.",
+        });
+      }
+
+      return res.json({
+        success: true,
+
+        requestId,
+
+        query:
+          result.query ||
+          "",
+
+        provider:
+          result.provider ||
+          "serper",
+
+        videos:
+          result.videos ||
+          [],
+      });
+    } catch (error) {
+      console.error(
+        "YouTube references route error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        requestId,
+
+        videos: [],
+
+        message:
+          "Unable to retrieve YouTube references right now.",
+      });
+    }
+  }
+);
 module.exports = router;

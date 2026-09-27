@@ -3,9 +3,12 @@ import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
+  CheckCircle2,
   BriefcaseBusiness,
   Building2,
   Check,
+  LocateFixed,
+  MapPin,
   ChevronRight,
   CircleDollarSign,
   Car,
@@ -78,6 +81,10 @@ const steps = [
   },
   {
     number: "04",
+    label: "YOUR LOCATION",
+  },
+  {
+    number: "05",
     label: "GET STARTED",
   },
 ];
@@ -91,7 +98,19 @@ const Onboarding = () => {
     name: "",
     dob: "",
     interests: [],
+    location: {
+      status: "not_requested",
+      latitude: null,
+      longitude: null,
+      accuracy: null,
+    },
   });
+
+  const [locationLoading, setLocationLoading] =
+    useState(false);
+
+  const [locationMessage, setLocationMessage] =
+    useState("");
 
   const [error, setError] = useState("");
 
@@ -129,6 +148,103 @@ const Onboarding = () => {
     });
 
     setError("");
+  };
+
+
+  const requestLocationAccess = () => {
+    setError("");
+    setLocationMessage("");
+
+    if (!navigator.geolocation) {
+      setError(
+        "Location access isn't supported by this browser."
+      );
+
+      setFormData((previous) => ({
+        ...previous,
+        location: {
+          status: "unsupported",
+          latitude: null,
+          longitude: null,
+          accuracy: null,
+        },
+      }));
+
+      return;
+    }
+
+    setLocationLoading(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const {
+          latitude,
+          longitude,
+          accuracy,
+        } = position.coords;
+
+        setFormData((previous) => ({
+          ...previous,
+          location: {
+            status: "granted",
+            latitude,
+            longitude,
+            accuracy,
+          },
+        }));
+
+        setLocationMessage(
+          "Location access granted. Lawlite can use your jurisdiction to tailor legal context."
+        );
+
+        setLocationLoading(false);
+      },
+      (locationError) => {
+        let message =
+          "We couldn't access your location.";
+
+        if (
+          locationError.code ===
+          window.GeolocationPositionError?.PERMISSION_DENIED
+        ) {
+          message =
+            "Location permission was denied. You can allow it from your browser settings and try again.";
+        } else if (
+          locationError.code ===
+          window.GeolocationPositionError?.POSITION_UNAVAILABLE
+        ) {
+          message =
+            "Your current location couldn't be determined right now.";
+        } else if (
+          locationError.code ===
+          window.GeolocationPositionError?.TIMEOUT
+        ) {
+          message =
+            "Location detection timed out. Please try again.";
+        }
+
+        setFormData((previous) => ({
+          ...previous,
+          location: {
+            status:
+              locationError.code === 1
+                ? "denied"
+                : "unavailable",
+            latitude: null,
+            longitude: null,
+            accuracy: null,
+          },
+        }));
+
+        setError(message);
+        setLocationLoading(false);
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 12000,
+        maximumAge: 300000,
+      }
+    );
   };
 
   const validateCurrentStep = () => {
@@ -176,6 +292,15 @@ const Onboarding = () => {
       }
     }
 
+    if (step === 4) {
+      if (locationLoading) {
+        setError(
+          "Please wait for the location check to finish."
+        );
+        return false;
+      }
+    }
+
     return true;
   };
 
@@ -186,7 +311,7 @@ const Onboarding = () => {
 
     setError("");
 
-    if (step < 4) {
+    if (step < 5) {
       setStep((previous) => previous + 1);
     }
   };
@@ -200,19 +325,20 @@ const Onboarding = () => {
   };
 
   const handleStart = () => {
-  const onboardingData = {
-    name: formData.name.trim(),
-    dob: formData.dob,
-    interests: formData.interests,
+    const onboardingData = {
+      name: formData.name.trim(),
+      dob: formData.dob,
+      interests: formData.interests,
+      location: formData.location,
+    };
+
+    localStorage.setItem(
+      "lawlite-onboarding",
+      JSON.stringify(onboardingData)
+    );
+
+    navigate("/loading");
   };
-
-  localStorage.setItem(
-    "lawlite-onboarding",
-    JSON.stringify(onboardingData)
-  );
-
-  navigate("/loading");
-};
 
   const getStepTitle = () => {
     switch (step) {
@@ -226,6 +352,9 @@ const Onboarding = () => {
         return "What are you interested in?";
 
       case 4:
+        return "Where should Lawlite tailor your legal context?";
+
+      case 5:
         return `You're all set, ${formData.name.trim() || "there"}.`;
 
       default:
@@ -245,6 +374,9 @@ const Onboarding = () => {
         return "Pick a few topics you'd like Lawlite to understand you better.";
 
       case 4:
+        return "Allow location access so Lawlite can better understand your legal jurisdiction. You can skip this for now.";
+
+      case 5:
         return "Your Lawlite experience is ready. Let's make legal information easier to understand.";
 
       default:
@@ -369,7 +501,7 @@ const Onboarding = () => {
             <Sparkles size={15} />
 
             <span>
-              {step === 4
+              {step === 5
                 ? "WELCOME TO LAWLITE"
                 : `STEP ${String(step).padStart(2, "0")}`}
             </span>
@@ -531,10 +663,106 @@ const Onboarding = () => {
           )}
 
           {/* ========================================
-              STEP 4 — START
+              STEP 4 — LOCATION
           ======================================== */}
 
           {step === 4 && (
+            <div className="onboarding-step onboarding-location-step">
+
+              <div className="onboarding-location-card">
+
+                <div className="onboarding-location-icon">
+                  <MapPin size={23} />
+                </div>
+
+                <div className="onboarding-location-copy">
+                  <strong>
+                    Use your current location
+                  </strong>
+
+                  <p>
+                    Lawlite can use your location to
+                    tailor legal context to your
+                    jurisdiction.
+                  </p>
+                </div>
+
+                {formData.location.status === "granted" ? (
+                  <div className="onboarding-location-status success">
+                    <CheckCircle2 size={15} />
+                    <span>
+                      Location access granted
+                    </span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="onboarding-location-button"
+                    onClick={requestLocationAccess}
+                    disabled={locationLoading}
+                  >
+                    {locationLoading ? (
+                      <>
+                        <span className="onboarding-location-spinner" />
+                        <span>
+                          Detecting location...
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <LocateFixed size={16} />
+                        <span>
+                          Allow location access
+                        </span>
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {locationMessage && (
+                  <div className="onboarding-location-message success">
+                    <Check size={13} />
+                    <span>
+                      {locationMessage}
+                    </span>
+                  </div>
+                )}
+
+                {!locationMessage &&
+                  formData.location.status !== "granted" && (
+                    <div className="onboarding-location-hint-row">
+                      <span className="onboarding-location-dot" />
+                      <span>
+                        Location is optional. You can
+                        continue without sharing it.
+                      </span>
+                    </div>
+                  )}
+
+              </div>
+
+              {formData.location.status === "granted" && (
+                <div className="onboarding-location-confirmation">
+                  <MapPin size={14} />
+
+                  <span>
+                    Current location detected
+                  </span>
+
+                  <span className="onboarding-location-confirmation-badge">
+                    Ready
+                  </span>
+                </div>
+              )}
+
+            </div>
+          )}
+
+          {/* ========================================
+              STEP 5 — START
+          ======================================== */}
+
+          {step === 5 && (
             <div className="onboarding-step onboarding-final-step">
 
               <div className="onboarding-final-mark">
@@ -573,6 +801,15 @@ const Onboarding = () => {
                   </strong>
                 </div>
 
+                <div>
+                  <span>LOCATION</span>
+                  <strong>
+                    {formData.location.status === "granted"
+                      ? "Access granted"
+                      : "Not shared"}
+                  </strong>
+                </div>
+
               </div>
 
             </div>
@@ -607,7 +844,7 @@ const Onboarding = () => {
               <div />
             )}
 
-            {step < 4 ? (
+            {step < 5 ? (
               <button
                 type="button"
                 className="onboarding-next"

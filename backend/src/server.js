@@ -10,7 +10,8 @@ const connectorRoutes = require("./routes/connectorRoutes");
 const dropboxRoutes = require("./routes/dropboxRoutes");
 const gmailRoutes = require("./routes/gmailRoutes");
 const githubRoutes = require("./routes/githubRoutes");
-
+const locationRoutes =
+  require("./routes/locationRoutes");
 require("./config/firebase");
 
 const app = express();
@@ -62,7 +63,14 @@ app.use(
   "/api/auth",
   authRoutes
 );
+// ==========================================
+// USER LOCATION / JURISDICTION
+// ==========================================
 
+app.use(
+  "/api/location",
+  locationRoutes
+);
 
 // ==========================================
 // CHAT

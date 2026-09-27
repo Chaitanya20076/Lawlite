@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+import { auth } from "../../config/firebase";
 import {
   ArrowLeft,
   ArrowRight,
@@ -22,7 +24,8 @@ import {
 } from "lucide-react";
 
 import "./Onboarding.css";
-
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000";
 const interestOptions = [
   {
     id: "property",
@@ -107,12 +110,15 @@ const Onboarding = () => {
   });
 
   const [locationLoading, setLocationLoading] =
-    useState(false);
+  useState(false);
 
-  const [locationMessage, setLocationMessage] =
-    useState("");
+const [locationMessage, setLocationMessage] =
+  useState("");
 
-  const [error, setError] = useState("");
+const [starting, setStarting] =
+  useState(false);
+
+const [error, setError] = useState("");
 
   const handleNameChange = (event) => {
     setFormData((previous) => ({
@@ -324,21 +330,139 @@ const Onboarding = () => {
     }
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
+  if (starting) {
+    return;
+  }
+
+  setError("");
+  setStarting(true);
+
+  try {
+    let savedJurisdiction = null;
+
+    /*
+     * ------------------------------------------------
+     * SAVE LOCATION TO BACKEND
+     * ------------------------------------------------
+     *
+     * Only send coordinates when the user actually
+     * granted location access.
+     */
+
+    if (
+      formData.location.status === "granted" &&
+      Number.isFinite(
+        Number(formData.location.latitude)
+      ) &&
+      Number.isFinite(
+        Number(formData.location.longitude)
+      )
+    ) {
+      const currentUser =
+        auth.currentUser;
+
+      if (!currentUser) {
+        throw new Error(
+          "Your login session could not be found. Please sign in again."
+        );
+      }
+
+      const idToken =
+        await currentUser.getIdToken();
+
+      const response =
+        await fetch(
+          `${API_BASE_URL}/api/location`,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+
+              Authorization:
+                `Bearer ${idToken}`,
+            },
+
+            body: JSON.stringify({
+              latitude:
+                formData.location.latitude,
+
+              longitude:
+                formData.location.longitude,
+            }),
+          }
+        );
+
+      const data =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !data?.success
+      ) {
+        throw new Error(
+          data?.message ||
+            "Unable to save your location."
+        );
+      }
+
+      savedJurisdiction =
+        data?.jurisdiction || null;
+    }
+
+    /*
+     * ------------------------------------------------
+     * SAVE ONBOARDING DATA LOCALLY
+     * ------------------------------------------------
+     *
+     * Store the resolved jurisdiction rather than
+     * keeping the precise GPS coordinates in the
+     * onboarding profile.
+     */
+
     const onboardingData = {
-      name: formData.name.trim(),
-      dob: formData.dob,
-      interests: formData.interests,
-      location: formData.location,
+      name:
+        formData.name.trim(),
+
+      dob:
+        formData.dob,
+
+      interests:
+        formData.interests,
+
+      location: {
+        status:
+          formData.location.status,
+
+        jurisdiction:
+          savedJurisdiction,
+      },
     };
 
     localStorage.setItem(
       "lawlite-onboarding",
-      JSON.stringify(onboardingData)
+      JSON.stringify(
+        onboardingData
+      )
     );
 
     navigate("/loading");
-  };
+  } catch (error) {
+    console.error(
+      "Onboarding start error:",
+      error
+    );
+
+    setError(
+      error?.message ||
+        "Unable to finish onboarding right now."
+    );
+
+    setStarting(false);
+  }
+};
 
   const getStepTitle = () => {
     switch (step) {
@@ -858,16 +982,23 @@ const Onboarding = () => {
               </button>
             ) : (
               <button
-                type="button"
-                className="onboarding-start"
-                onClick={handleStart}
-              >
-                <span>
-                  Start using Lawlite
-                </span>
+  type="button"
+  className="onboarding-start"
+  onClick={handleStart}
+  disabled={starting}
+>
+  <span>
+    {starting
+      ? "Setting up Lawlite..."
+      : "Start using Lawlite"}
+  </span>
 
-                <ArrowRight size={18} />
-              </button>
+  {starting ? (
+    <span className="onboarding-location-spinner" />
+  ) : (
+    <ArrowRight size={18} />
+  )}
+</button>
             )}
 
           </div>

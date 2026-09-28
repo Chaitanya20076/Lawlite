@@ -60,7 +60,10 @@ const {
   classifyLawliteQuery,
   getLawliteRefusalMessage,
 } = require("../services/connectorIntelligenceService");
-
+const {
+  getUserJurisdiction,
+  resolveEffectiveJurisdiction,
+} = require("../services/jurisdictionService");
 const {
   getFirestore,
 } = require("firebase-admin/firestore");
@@ -1213,6 +1216,60 @@ router.post(
 
       const userMessage =
         latestUserMessage.content;
+      /* 
+|--------------------------------------------------------------------------
+| LEGAL JURISDICTION
+|--------------------------------------------------------------------------
+|
+| Priority:
+|
+| 1. Explicit jurisdiction mentioned in the current message
+| 2. Saved onboarding jurisdiction
+| 3. No jurisdiction
+|
+|--------------------------------------------------------------------------
+*/
+
+      let savedJurisdiction = null;
+
+      try {
+        savedJurisdiction =
+          await getUserJurisdiction(uid);
+      } catch (jurisdictionError) {
+        console.error(
+          "Saved jurisdiction lookup error:",
+          jurisdictionError
+        );
+
+        savedJurisdiction = null;
+      }
+
+      const jurisdictionResolution =
+        resolveEffectiveJurisdiction({
+          message: userMessage,
+          savedJurisdiction,
+        });
+
+      const effectiveJurisdiction =
+        jurisdictionResolution.jurisdiction;
+
+      const jurisdictionSource =
+        jurisdictionResolution.source;
+
+      console.log(
+        "⚖️ Lawlite jurisdiction:",
+        {
+          jurisdiction:
+            effectiveJurisdiction?.displayName ||
+            null,
+
+          source:
+            jurisdictionSource,
+
+          explicit:
+            jurisdictionResolution.explicit,
+        }
+      );
 
 
 /*
@@ -1870,14 +1927,38 @@ router.post(
         );
 
         try {
-          const searchResults =
-            await searchWeb({
-              query:
-                userMessage,
+          const jurisdictionSearchSuffix =
+  effectiveJurisdiction
+    ? [
+        effectiveJurisdiction.state,
+        effectiveJurisdiction.country,
+        "law legal",
+      ]
+        .filter(Boolean)
+        .join(" ")
+    : "";
 
-              num:
-                5,
-            });
+const searchQuery =
+  [
+    userMessage,
+    jurisdictionSearchSuffix,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+console.log(
+  "🌐 Lawlite web search query:",
+  searchQuery
+);
+
+const searchResults =
+  await searchWeb({
+    query:
+      searchQuery,
+
+    num:
+      5,
+  });
 
           const organicResults =
             searchResults?.organic ||
@@ -2391,23 +2472,26 @@ Snippet: ${result.snippet || ""}`
       */
 
       const answer =
-        await runWithAiSlot(
-          uid,
-          () =>
-            generateChatResponse({
-              conversation:
-                cleanConversation,
+  await runWithAiSlot(
+    uid,
+    () =>
+      generateChatResponse({
+        conversation:
+          cleanConversation,
 
-              webResults:
-                webContext,
+        webResults:
+          webContext,
 
-              driveContext:
-                combinedPrivateDocumentContext,
-            }),
-          {
-            requestId,
-          }
-        );
+        driveContext:
+          combinedPrivateDocumentContext,
+
+        jurisdiction:
+          effectiveJurisdiction,
+      }),
+    {
+      requestId,
+    }
+  );
 
 
       /*
@@ -2423,6 +2507,11 @@ Snippet: ${result.snippet || ""}`
           answer,
 
         requestId,
+        jurisdictionUsed:
+  effectiveJurisdiction || null,
+
+jurisdictionSource:
+  jurisdictionSource,
 
         webSearchUsed:
           needsWebSearch,

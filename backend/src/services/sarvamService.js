@@ -757,6 +757,8 @@ const generateChatResponse =
     webResults = null,
 
     driveContext = null,
+
+    jurisdiction = null,
   }) => {
     if (
       !Array.isArray(
@@ -906,6 +908,64 @@ Give the user a useful, readable answer directly.
     const messages = [
       systemMessage,
     ];
+    /*
+|--------------------------------------------------------------------------
+| LEGAL JURISDICTION CONTEXT
+|--------------------------------------------------------------------------
+*/
+
+if (
+  jurisdiction &&
+  (
+    jurisdiction.city ||
+    jurisdiction.state ||
+    jurisdiction.country
+  )
+) {
+  const jurisdictionParts = [
+    jurisdiction.city
+      ? `City: ${jurisdiction.city}`
+      : null,
+
+    jurisdiction.state
+      ? `State/Region: ${jurisdiction.state}`
+      : null,
+
+    jurisdiction.country
+      ? `Country: ${jurisdiction.country}`
+      : null,
+
+    jurisdiction.countryCode
+      ? `Country Code: ${jurisdiction.countryCode}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  messages.push({
+    role: "system",
+
+    content: `
+LEGAL JURISDICTION CONTEXT
+
+The backend resolved the following jurisdiction for this conversation:
+
+${jurisdictionParts}
+
+Use this jurisdiction when answering legal questions where location matters.
+
+Rules:
+- Prefer this jurisdiction for general legal questions when no different jurisdiction is explicitly requested by the user.
+- If the user's current message explicitly names another jurisdiction, follow that explicitly requested jurisdiction instead.
+- Do not assume that every legal issue is governed by state or regional law.
+- Distinguish national/central law from state, regional, or local law where relevant.
+- For India, distinguish laws applicable across India from Karnataka, Maharashtra, or another state-specific law when that distinction matters.
+- Do not fabricate jurisdiction-specific laws, sections, rules, courts, procedures, deadlines, or penalties.
+- If the jurisdiction is insufficient to answer confidently, clearly state what additional jurisdictional information is needed.
+- Use the jurisdiction as context, not as a reason to force a location-specific answer when location is irrelevant.
+`.trim(),
+  });
+}
 
 
     /*

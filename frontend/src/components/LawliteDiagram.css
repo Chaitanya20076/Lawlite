@@ -1,0 +1,496 @@
+/* =========================================================
+   LAWLITE VISUAL DIAGRAM
+   ========================================================= */
+
+.lawlite-diagram {
+  width: 100%;
+  margin: 18px 0;
+
+  overflow: hidden;
+
+  border: 1px solid rgba(150, 130, 105, 0.16);
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.72),
+      rgba(248, 245, 238, 0.94)
+    );
+
+  box-shadow:
+    0 10px 30px
+      rgba(55, 42, 30, 0.055);
+
+  animation:
+    lawlite-diagram-enter
+    0.35s ease both;
+}
+
+[data-theme="dark"]
+  .lawlite-diagram {
+  border-color:
+    rgba(255, 255, 255, 0.09);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(27, 27, 27, 0.96),
+      rgba(18, 18, 18, 0.98)
+    );
+
+  box-shadow:
+    0 12px 34px
+      rgba(0, 0, 0, 0.24);
+}
+
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.lawlite-diagram-header {
+  display: flex;
+  align-items: center;
+
+  min-height: 55px;
+
+  padding:
+    10px 15px;
+
+  border-bottom:
+    1px solid
+      rgba(120, 105, 90, 0.11);
+}
+
+[data-theme="dark"]
+  .lawlite-diagram-header {
+  border-bottom-color:
+    rgba(255, 255, 255, 0.07);
+}
+
+.lawlite-diagram-header > div {
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+.lawlite-diagram-eyebrow {
+  color: #b56a34;
+
+  font-size: 8px;
+  font-weight: 750;
+
+  letter-spacing: 1.25px;
+}
+
+[data-theme="dark"]
+  .lawlite-diagram-eyebrow {
+  color: #d2aa3a;
+}
+
+.lawlite-diagram-header strong {
+  color: #30271f;
+
+  font-size: 12px;
+  font-weight: 750;
+}
+
+[data-theme="dark"]
+  .lawlite-diagram-header strong {
+  color: #eee7db;
+}
+
+
+/* =========================================================
+   SCROLL AREA
+   ========================================================= */
+
+.lawlite-diagram-scroll {
+  width: 100%;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  padding:
+    8px 0 12px;
+
+  scrollbar-width: thin;
+}
+
+.lawlite-diagram-scroll::-webkit-scrollbar {
+  height: 5px;
+}
+
+.lawlite-diagram-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.lawlite-diagram-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+
+  background:
+    rgba(120, 100, 80, 0.25);
+}
+
+[data-theme="dark"]
+  .lawlite-diagram-scroll::-webkit-scrollbar-thumb {
+  background:
+    rgba(255, 255, 255, 0.14);
+}
+
+
+/* =========================================================
+   SVG
+   ========================================================= */
+
+.lawlite-diagram-svg {
+  display: block;
+
+  width: 100%;
+  min-width: 560px;
+
+  height: auto;
+}
+
+
+/* =========================================================
+   CONNECTING LINES
+   ========================================================= */
+
+.lawlite-diagram-edge {
+  fill: none;
+
+  stroke:
+    rgba(181, 106, 52, 0.72);
+
+  stroke-width: 2.2;
+
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+
+  animation:
+    lawlite-draw-line
+    0.8s
+    cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    )
+    forwards;
+
+  animation-delay:
+    var(--edge-delay, 0s);
+}
+
+[data-theme="dark"]
+  .lawlite-diagram-edge {
+  stroke:
+    rgba(210, 170, 58, 0.9);
+}
+
+
+/* =========================================================
+   ARROW
+   ========================================================= */
+
+.lawlite-diagram-arrow {
+  fill:
+    rgba(181, 106, 52, 0.82);
+}
+
+[data-theme="dark"]
+  .lawlite-diagram-arrow {
+  fill:
+    rgba(210, 170, 58, 0.92);
+}
+
+
+/* =========================================================
+   NODE ANIMATION
+   ========================================================= */
+
+.lawlite-diagram-node {
+  opacity: 0;
+
+  transform-box: fill-box;
+  transform-origin: center;
+
+  animation:
+    lawlite-node-enter
+    0.48s
+    cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    )
+    forwards;
+
+  animation-delay:
+    var(--node-delay, 0s);
+}
+
+
+/* =========================================================
+   NODE BOX
+   ========================================================= */
+
+.lawlite-diagram-node-box {
+  fill:
+    rgba(255, 255, 255, 0.92);
+
+  stroke:
+    rgba(150, 130, 105, 0.18);
+
+  stroke-width: 1.2;
+
+  filter:
+    drop-shadow(
+      0 5px 12px
+        rgba(55, 42, 30, 0.06)
+    );
+}
+
+[data-theme="dark"]
+  .lawlite-diagram-node-box {
+  fill:
+    rgba(31, 31, 31, 0.96);
+
+  stroke:
+    rgba(255, 255, 255, 0.09);
+
+  filter:
+    drop-shadow(
+      0 7px 16px
+        rgba(0, 0, 0, 0.2)
+    );
+}
+
+
+/* =========================================================
+   NODE ACCENT
+   ========================================================= */
+
+.lawlite-diagram-node-accent {
+  fill:
+    #c9783f;
+}
+
+[data-theme="dark"]
+  .lawlite-diagram-node-accent {
+  fill:
+    #d2aa3a;
+}
+
+
+/* =========================================================
+   NODE LABEL
+   ========================================================= */
+
+.lawlite-diagram-node-label {
+  fill:
+    #332a23;
+
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  font-size: 12px;
+  font-weight: 750;
+}
+
+[data-theme="dark"]
+  .lawlite-diagram-node-label {
+  fill:
+    #eee7db;
+}
+
+
+/* =========================================================
+   NODE DESCRIPTION
+   ========================================================= */
+
+.lawlite-diagram-node-description {
+  fill:
+    #887d71;
+
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  font-size: 8px;
+  font-weight: 500;
+}
+
+[data-theme="dark"]
+  .lawlite-diagram-node-description {
+  fill:
+    #969087;
+}
+
+
+/* =========================================================
+   ERROR
+   ========================================================= */
+
+.lawlite-diagram-error {
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+
+  margin: 14px 0;
+  padding: 13px 14px;
+
+  border:
+    1px solid
+      rgba(194, 76, 76, 0.18);
+
+  border-radius: 10px;
+
+  background:
+    rgba(194, 76, 76, 0.045);
+}
+
+.lawlite-diagram-error strong {
+  color: #9e4949;
+
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.lawlite-diagram-error span {
+  color: #7d6f63;
+
+  font-size: 10px;
+}
+
+[data-theme="dark"]
+  .lawlite-diagram-error {
+  border-color:
+    rgba(240, 100, 100, 0.16);
+
+  background:
+    rgba(240, 100, 100, 0.05);
+}
+
+[data-theme="dark"]
+  .lawlite-diagram-error strong {
+  color:
+    #ef8f8f;
+}
+
+[data-theme="dark"]
+  .lawlite-diagram-error span {
+  color:
+    #aaa29a;
+}
+
+
+/* =========================================================
+   ANIMATIONS
+   ========================================================= */
+
+@keyframes lawlite-draw-line {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes lawlite-node-enter {
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(8px)
+      scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+@keyframes lawlite-diagram-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+  .lawlite-diagram {
+    margin:
+      14px 0;
+  }
+
+  .lawlite-diagram-header {
+    min-height: 50px;
+
+    padding:
+      9px 12px;
+  }
+
+  .lawlite-diagram-svg {
+    min-width: 520px;
+  }
+
+  .lawlite-diagram-node-label {
+    font-size: 11px;
+  }
+
+  .lawlite-diagram-node-description {
+    font-size: 7.5px;
+  }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .lawlite-diagram,
+  .lawlite-diagram-edge,
+  .lawlite-diagram-node {
+    animation: none !important;
+  }
+
+  .lawlite-diagram-edge {
+    stroke-dashoffset: 0;
+  }
+
+  .lawlite-diagram-node {
+    opacity: 1;
+  }
+}

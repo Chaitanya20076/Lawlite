@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+import LawliteDiagram from "../../components/LawliteDiagram";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -3747,79 +3750,126 @@ if (
 
   <div className="chat-message-markdown">
     <ReactMarkdown
-      components={{
-        pre({ children }) {
-          const blockId = `${item.id}-code`;
+  remarkPlugins={[remarkGfm]}
+  components={{
+    pre({ children }) {
+      const blockId = `${item.id}-code`;
 
-          let codeText = "";
+      let codeText = "";
 
-          const codeElement =
-            Array.isArray(children)
-              ? children.find(
-                  (child) =>
-                    child?.props?.children != null
+      const codeElement =
+        Array.isArray(children)
+          ? children.find(
+              (child) =>
+                child?.props?.children !=
+                null
+            )
+          : children;
+
+      const codeClassName =
+        codeElement?.props?.className ||
+        "";
+
+      if (codeElement) {
+        const rawCode =
+          codeElement.props?.children;
+
+        codeText = Array.isArray(
+          rawCode
+        )
+          ? rawCode.join("")
+          : String(
+              rawCode ?? ""
+            );
+      }
+
+      /*
+       * Special Lawlite diagram block.
+       *
+       * The AI will eventually return:
+       *
+       * ```lawlite-diagram
+       * {
+       *   ...
+       * }
+       * ```
+       *
+       * We render that as an animated
+       * SVG instead of showing raw JSON.
+       */
+
+      const isLawliteDiagram =
+        /\blanguage-lawlite-diagram\b/.test(
+          codeClassName
+        );
+
+      if (
+        isLawliteDiagram
+      ) {
+        return (
+          <LawliteDiagram
+            raw={codeText}
+          />
+        );
+      }
+
+      const isCopied =
+        copiedCodeBlockId ===
+        blockId;
+
+      return (
+        <div className="chat-code-block">
+          <div className="chat-code-block-header">
+            <span>
+              Copyable text
+            </span>
+
+            <button
+              type="button"
+              className="chat-code-copy-button"
+              onClick={() =>
+                handleCopyCodeBlock(
+                  codeText,
+                  blockId
                 )
-              : children;
+              }
+              title={
+                isCopied
+                  ? "Copied"
+                  : "Copy"
+              }
+              aria-label={
+                isCopied
+                  ? "Copied"
+                  : "Copy code block"
+              }
+            >
+              {isCopied ? (
+                <Check size={13} />
+              ) : (
+                <Clipboard
+                  size={13}
+                />
+              )}
 
-          if (codeElement) {
-            const rawCode =
-              codeElement.props?.children;
+              <span>
+                {isCopied
+                  ? "Copied"
+                  : "Copy"}
+              </span>
+            </button>
+          </div>
 
-            codeText = Array.isArray(rawCode)
-              ? rawCode.join("")
-              : String(rawCode ?? "");
-          }
-
-          const isCopied =
-            copiedCodeBlockId === blockId;
-
-          return (
-            <div className="chat-code-block">
-              <div className="chat-code-block-header">
-                <span>Copyable text</span>
-
-                <button
-                  type="button"
-                  className="chat-code-copy-button"
-                  onClick={() =>
-                    handleCopyCodeBlock(
-                      codeText,
-                      blockId
-                    )
-                  }
-                  title={
-                    isCopied
-                      ? "Copied"
-                      : "Copy"
-                  }
-                  aria-label={
-                    isCopied
-                      ? "Copied"
-                      : "Copy code block"
-                  }
-                >
-                  {isCopied ? (
-                    <Check size={13} />
-                  ) : (
-                    <Clipboard size={13} />
-                  )}
-
-                  <span>
-                    {isCopied
-                      ? "Copied"
-                      : "Copy"}
-                  </span>
-                </button>
-              </div>
-
-              <pre>{children}</pre>
-            </div>
-          );
-        },
-      }}
-    >
-      {item.text}
-    </ReactMarkdown>
+          <pre>
+            {children}
+          </pre>
+        </div>
+      );
+    },
+  }}
+>
+  {item.text}
+</ReactMarkdown>
 
     {item.typing && (
       <span className="chat-typing-cursor">
